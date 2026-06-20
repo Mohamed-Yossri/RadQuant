@@ -1,0 +1,44 @@
+# Secrets / runtime
+.env
+.env.runtime
+
+# Data (downloaded, large — never commit). Root-anchored so it does NOT
+# match the radcopilot/data/ package directory.
+/data/
+
+# Vendored upstream
+/external/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Model/HF caches (should live in ~/.cache, but guard anyway)
+*.safetensors
+*.bin
+
+# This repo root doubles as the studio HOME dir — never track its dotfiles.
+.cache/
+.claude/
+.claude.json
+.config/
+.copilot/
+.cursor-server
+.dotnet/
+.idea/
+.ipython/
+.jupyter
+.lightning_studio/
+.nv/
+.vscode/
+.vscode-server
+.windsurf-server
+*.log
+.torchxrayvision/
+main.py
