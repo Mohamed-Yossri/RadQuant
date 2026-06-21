@@ -69,3 +69,12 @@ are the corrections).
   flags omitted PTX, clears "no pneumothorax" + costophrenic-blunting synonym).
   - QC threshold is >0.7 (not 0.5). Lexical match short-circuits the LLM so the
     deterministic done-when cases (b)/(c) never depend on the model.
+- Phase 6: `prompts/explainer.py`, `nodes/explain.py` (text-only plain-language
+  translation + `build_glossary` {term::def} + pure `highlight_html` hover tags),
+  `ui/explainer.py`. Verified: `tests/test_explain.py` (6 pass),
+  `scripts/phase6_check.py` (modality-agnostic: tested on a CT-head report).
+  - GOTCHA: the first explainer prompt made MedGemma ECHO the report verbatim
+    (no translation). Fixed by an explicit "do NOT copy the wording, replace each
+    term with everyday words" prompt; phase6_check now asserts hard jargon
+    (intraparenchymal/vasogenic/...) is ABSENT from the plain version so an echo
+    can never pass again.

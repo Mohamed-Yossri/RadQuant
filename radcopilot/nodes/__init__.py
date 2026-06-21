@@ -12,6 +12,13 @@ from .triage import (
 from .draft import draft, draft_report, parse_sections
 from .visualize import visualize, gradcam_overlay
 from .qc import qc, find_omissions, is_addressed
+from .explain import (
+    explain,
+    explain_report,
+    build_glossary,
+    parse_glossary,
+    highlight_html,
+)
 
 __all__ = [
     "classify",
@@ -31,4 +38,9 @@ __all__ = [
     "qc",
     "find_omissions",
     "is_addressed",
+    "explain",
+    "explain_report",
+    "build_glossary",
+    "parse_glossary",
+    "highlight_html",
 ]
