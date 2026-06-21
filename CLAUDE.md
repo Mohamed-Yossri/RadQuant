@@ -43,3 +43,14 @@ are the corrections).
   `tests/test_medgemma.py` (3 pass), `scripts/bench_medgemma.py`. DONE.
   - Measured on L4 bf16: ~15.6 tok/s decode, peak VRAM **8.7 GB / 24 GB**, 15s load.
   - transformers 5.x: use `dtype=` not `torch_dtype=`.
+- Phase 3: `nodes/classify.py` (+singleton), `nodes/triage.py` (ACR/Annarumma/
+  Baltruschat tier weights → `urgency_score = sum(w·p)`), `worklist.py` (JSON-
+  persisted store), `ui/worklist.py` (Streamlit). Verified: `tests/test_triage.py`
+  (5 pass), `scripts/phase3_check.py`. DONE.
+  - IMPORTANT honesty note: the done-when "pneumothorax>0.5 → top quartile" is
+    asserted on CONTROLLED data in the unit test, NOT on ChestAgentBench figures.
+    Those figures are OOD for the DenseNet (CT panels, annotated multi-image
+    figures) so it fires broadly; a 0.5 threshold is meaningless on them, and the
+    additive sum lets many co-elevated findings outrank one true critical finding.
+    The real-data script only asserts pipeline-correctness + sort order, and
+    reports the OOD caveat. Do not "fix" by gaming the figure data.
