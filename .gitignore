@@ -9,6 +9,10 @@
 # Vendored upstream
 /external/
 
+# Agent runtime scratch
+/temp/
+/logs/
+
 # Python
 __pycache__/
 *.py[cod]

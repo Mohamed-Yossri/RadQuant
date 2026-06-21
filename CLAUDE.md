@@ -31,4 +31,10 @@ are the corrections).
 - Only large unavoidable artifact: MedGemma weights (~8 GB) in the HF cache.
 
 ## Phase status
-- Phase 0: scaffold + `scripts/setup.py` + `scripts/smoke_test.py`. DONE/in-progress.
+- Phase 0: scaffold + `scripts/setup.py` + `scripts/smoke_test.py`. DONE.
+- Phase 1: `radcopilot.foundation` — stripped MedRAX subset (classifier, DICOM,
+  visualizer + LangGraph `Agent`) rewired to Groq `gpt-oss-120b`. Verified by
+  `scripts/phase1_check.py` (agent chains tools + returns correct top-3). DONE.
+  - Note: foundation is a *vendored derivative* of MedRAX (Apache-2.0) under
+    `radcopilot/foundation/` with `NOTICE.md`, NOT an import of `external/medrax`
+    (whose `tools/__init__.py` eagerly imports LLaVA/RoentGen/etc. and would fail).
