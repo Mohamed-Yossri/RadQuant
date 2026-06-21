@@ -62,3 +62,10 @@ are the corrections).
     findings via a clean report ("lungs are clear") rather than inventing them —
     that counts as "visually dismissed" per the done-when. The grounding check is
     dismissal-aware (blanket-normal phrasing covers unnamed findings).
+- Phase 5: `prompts/synonyms.py` (18-pathology synonym map), `nodes/qc.py`
+  (omission QC: lexical synonym match → MedGemma LLM-judge fallback; judge is
+  injectable for tests), `ui/qc_panel.py` (Streamlit Dismiss/Add panel). Verified:
+  `tests/test_qc.py` (6 pass, stub judge), `scripts/phase5_check.py` (real judge;
+  flags omitted PTX, clears "no pneumothorax" + costophrenic-blunting synonym).
+  - QC threshold is >0.7 (not 0.5). Lexical match short-circuits the LLM so the
+    deterministic done-when cases (b)/(c) never depend on the model.

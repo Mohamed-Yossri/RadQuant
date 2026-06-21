@@ -11,6 +11,7 @@ from .triage import (
 )
 from .draft import draft, draft_report, parse_sections
 from .visualize import visualize, gradcam_overlay
+from .qc import qc, find_omissions, is_addressed
 
 __all__ = [
     "classify",
@@ -27,4 +28,7 @@ __all__ = [
     "parse_sections",
     "visualize",
     "gradcam_overlay",
+    "qc",
+    "find_omissions",
+    "is_addressed",
 ]
