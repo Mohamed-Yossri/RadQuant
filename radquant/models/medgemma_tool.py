@@ -37,6 +37,9 @@ class MedGemmaVQATool(BaseTool):
         "image via 'image_path'. Output is the model's generated text."
     )
     args_schema: Type[BaseModel] = MedGemmaInput
+    # Hard ceiling on generation length, regardless of what the caller requests.
+    # Keeps agentic loops (e.g. the eval) fast; None = no cap.
+    max_tokens_cap: Optional[int] = None
 
     def _run(
         self,
@@ -47,6 +50,8 @@ class MedGemmaVQATool(BaseTool):
     ) -> Tuple[dict, dict]:
         from radquant.models.medgemma import generate
 
+        if self.max_tokens_cap:
+            max_new_tokens = min(max_new_tokens, self.max_tokens_cap)
         try:
             text = generate(image_path, prompt, max_new_tokens=max_new_tokens)
             return {"response": text}, {

@@ -29,48 +29,66 @@ DEFAULT_SYSTEM_PROMPT = (
     "output as a final clinical diagnosis."
 )
 
+def _medgemma_tool(device, temp_dir):
+    from radquant.models import MedGemmaVQATool  # lazy: avoids loading transformers early
+    return MedGemmaVQATool()
+
+
 # name -> factory(device, temp_dir). Mirrors MedRAX's `all_tools` registry,
-# trimmed to the three tools RadQuant keeps.
+# trimmed to the tools RadQuant keeps + the MedGemma VLM (vision for the eval).
 _TOOL_FACTORY = {
     "ChestXRayClassifierTool": lambda device, temp_dir: ChestXRayClassifierTool(device=device),
     "DicomProcessorTool": lambda device, temp_dir: DicomProcessorTool(temp_dir=temp_dir),
     "ImageVisualizerTool": lambda device, temp_dir: ImageVisualizerTool(),
+    "MedGemmaVQATool": _medgemma_tool,
 }
+
+# Default tool set for the interactive agent (no MedGemma VLM; the nodes call it
+# directly). The eval explicitly opts MedGemma in so the orchestrator can see.
+_DEFAULT_TOOLS = ["ChestXRayClassifierTool", "DicomProcessorTool", "ImageVisualizerTool"]
 
 
 def build_agent(
     tools_to_use: Optional[List[str]] = None,
     device: str = "cuda",
     temp_dir: str = "temp",
+    backend: str = "groq",
     model: Optional[str] = None,
     temperature: float = 0.7,
     top_p: float = 0.95,
     max_tokens: int = 2048,
     system_prompt: Optional[str] = None,
+    log_tools: bool = True,
     log_dir: str = "logs",
 ) -> Tuple[Agent, Dict[str, object]]:
-    """Initialize the foundation agent against the Groq orchestrator.
+    """Initialize the foundation agent against an OpenAI-compatible orchestrator.
 
     Args:
-        tools_to_use: subset of _TOOL_FACTORY keys; defaults to all three.
-        device: torch device for the classifier ("cuda" or "cpu").
-        temp_dir: scratch dir for DICOM->PNG conversions.
-        model: Groq model id; defaults to config.GROQ_MODEL (gpt-oss-120b).
+        tools_to_use: subset of _TOOL_FACTORY keys; defaults to the interactive set.
+        backend: "groq" (gpt-oss-120b) or "nvidia" (NIM Llama-3.3-70B, Phase 8 eval).
+        model: override the backend's default model id.
         max_tokens: gpt-oss-120b is a reasoning model — keep this generous or the
             visible answer comes back empty (budget spent on hidden reasoning).
 
     Returns:
         (agent, tools_dict) — mirrors MedRAX's return contract.
     """
-    key = config.groq_key()
-    if not key:
-        raise RuntimeError(
-            "No Groq key found. Set GROQ_TOKEN (or GROQ_API_KEY) — see PLAN.md."
-        )
+    if backend == "nvidia":
+        key, base_url, default_model = (config.nvidia_key(), config.NVIDIA_BASE_URL,
+                                        config.NVIDIA_MODEL)
+        if not key:
+            raise RuntimeError("No NVIDIA key found. Set NVIDIA_KEY — see PLAN.md.")
+    elif backend == "groq":
+        key, base_url, default_model = (config.groq_key(), config.GROQ_BASE_URL,
+                                        config.GROQ_MODEL)
+        if not key:
+            raise RuntimeError("No Groq key found. Set GROQ_TOKEN (or GROQ_API_KEY).")
+    else:
+        raise ValueError(f"unknown backend {backend!r} (use 'groq' or 'nvidia')")
 
     llm = ChatOpenAI(
-        model=model or config.GROQ_MODEL,
-        base_url=config.GROQ_BASE_URL,
+        model=model or default_model,
+        base_url=base_url,
         api_key=key,
         temperature=temperature,
         top_p=top_p,
@@ -78,7 +96,7 @@ def build_agent(
         default_headers={"User-Agent": "radquant/0.1"},  # Cloudflare 1010 guard
     )
 
-    names = tools_to_use or list(_TOOL_FACTORY)
+    names = tools_to_use or _DEFAULT_TOOLS
     tools = [_TOOL_FACTORY[n](device, temp_dir) for n in names if n in _TOOL_FACTORY]
 
     agent = Agent(
@@ -86,7 +104,7 @@ def build_agent(
         tools=tools,
         checkpointer=MemorySaver(),
         system_prompt=system_prompt or DEFAULT_SYSTEM_PROMPT,
-        log_tools=True,
+        log_tools=log_tools,
         log_dir=log_dir,
     )
     return agent, {t.name: t for t in tools}

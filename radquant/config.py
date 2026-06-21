@@ -16,6 +16,9 @@ DATA_DIR = ROOT / "data"
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 GROQ_MODEL = "openai/gpt-oss-120b"          # primary orchestrator
 GROQ_MODEL_FALLBACK = "llama-3.3-70b-versatile"  # higher RPD for bulk eval
+# NVIDIA NIM — used as the Phase 8 eval orchestrator (no daily cap, ~40 RPM).
+NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+NVIDIA_MODEL = "meta/llama-3.3-70b-instruct"
 MEDGEMMA_REPO = "google/medgemma-1.5-4b-it"
 XRV_WEIGHTS = "densenet121-res224-all"
 CHESTAGENTBENCH_REPO = "wanglab/chest-agent-bench"  # canonical id
@@ -47,6 +50,13 @@ def hf_token() -> str | None:
 def groq_key() -> str | None:
     _load_dotenv()
     return os.environ.get("GROQ_TOKEN") or os.environ.get("GROQ_API_KEY")
+
+
+def nvidia_key() -> str | None:
+    """NVIDIA NIM key. The Lightning secret for this project is named NVIDIA_KEY."""
+    _load_dotenv()
+    return (os.environ.get("NVIDIA_KEY") or os.environ.get("NVIDIA_API_KEY")
+            or os.environ.get("NIM_API_KEY"))
 
 
 def quant() -> str:

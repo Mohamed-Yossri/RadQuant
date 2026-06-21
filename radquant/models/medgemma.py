@@ -107,6 +107,47 @@ class MedGemma:
         )
         return self.processor.decode(gen[0][in_len:], skip_special_tokens=True).strip()
 
+    @torch.inference_mode()
+    def generate_multi(
+        self,
+        images: list,
+        prompt: str,
+        labels: Optional[list] = None,
+        system: Optional[str] = None,
+        max_new_tokens: int = 384,
+        do_sample: bool = False,
+        temperature: float = 0.7,
+    ) -> str:
+        """Generate over MULTIPLE interleaved images (Gemma3 multi-image).
+
+        Args:
+            images: list of PIL images or path strings.
+            labels: optional per-image captions (e.g. ["Figure 1", "Figure 2A"]).
+        """
+        pil = [(Image.open(i) if isinstance(i, str) else i).convert("RGB") for i in images]
+        content: list[dict] = []
+        for idx, im in enumerate(pil):
+            if labels:
+                content.append({"type": "text", "text": f"{labels[idx]}:"})
+            content.append({"type": "image", "image": im})
+        content.append({"type": "text", "text": prompt})
+
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": [{"type": "text", "text": system}]})
+        messages.append({"role": "user", "content": content})
+
+        inputs = self.processor.apply_chat_template(
+            messages, add_generation_prompt=True, tokenize=True,
+            return_dict=True, return_tensors="pt",
+        ).to(self.model.device)
+        in_len = inputs["input_ids"].shape[-1]
+        gen = self.model.generate(
+            **inputs, max_new_tokens=max_new_tokens,
+            do_sample=do_sample, temperature=temperature if do_sample else None,
+        )
+        return self.processor.decode(gen[0][in_len:], skip_special_tokens=True).strip()
+
 
 def get_medgemma() -> MedGemma:
     """Return the process-wide MedGemma singleton (loads it on first call)."""
