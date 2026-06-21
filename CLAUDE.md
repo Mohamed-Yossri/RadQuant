@@ -38,3 +38,8 @@ are the corrections).
   - Note: foundation is a *vendored derivative* of MedRAX (Apache-2.0) under
     `radcopilot/foundation/` with `NOTICE.md`, NOT an import of `external/medrax`
     (whose `tools/__init__.py` eagerly imports LLaVA/RoentGen/etc. and would fail).
+- Phase 2: `radcopilot/models/medgemma.py` — VRAM-aware singleton (`get_medgemma`,
+  `generate(image|None, prompt)`), `MedGemmaVQATool` LangChain wrapper. Verified:
+  `tests/test_medgemma.py` (3 pass), `scripts/bench_medgemma.py`. DONE.
+  - Measured on L4 bf16: ~15.6 tok/s decode, peak VRAM **8.7 GB / 24 GB**, 15s load.
+  - transformers 5.x: use `dtype=` not `torch_dtype=`.
