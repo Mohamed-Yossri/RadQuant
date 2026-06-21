@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One-command environment setup for the Medical Radiology Copilot.
+"""One-command environment setup for the RadQuant.
 
 Idempotent: safe to re-run; each step skips work already done.
 
@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 EXTERNAL = ROOT / "external"
 
-# Keep these in sync with radcopilot/config.py (duplicated here so setup.py runs
+# Keep these in sync with radquant/config.py (duplicated here so setup.py runs
 # with ZERO project imports before `pip install -e .` has happened).
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 GROQ_MODEL = "openai/gpt-oss-120b"
@@ -132,9 +132,9 @@ def step_detect_gpu() -> str:
         warn(f"nvidia-smi unavailable ({e}); defaulting to bf16 (CPU/unknown GPU).")
 
     (ROOT / ".env.runtime").write_text(
-        f"RADCOPILOT_QUANT={quant}\n"
-        f"RADCOPILOT_DEVICE={name}\n"
-        f"RADCOPILOT_VRAM_MB={vram}\n"
+        f"RADQUANT_QUANT={quant}\n"
+        f"RADQUANT_DEVICE={name}\n"
+        f"RADQUANT_VRAM_MB={vram}\n"
     )
     ok("Wrote .env.runtime")
     SUMMARY["gpu"] = f"{name}, {vram} MiB, quant={quant}"
@@ -163,7 +163,7 @@ def step_install(quant: str, force: bool) -> None:
              cwd=str(ROOT))
     if cp.returncode != 0:
         die("pip install failed. See output above.")
-    ok(f"Installed radcopilot + deps ({target})")
+    ok(f"Installed radquant + deps ({target})")
     SUMMARY["install"] = f"pip install -e {target}"
 
 
@@ -320,7 +320,7 @@ def step_validate_groq(groq: str) -> None:
         headers={"Authorization": f"Bearer {groq}", "Content-Type": "application/json",
                  # Groq sits behind Cloudflare, which 403s (err 1010) the default
                  # urllib User-Agent. Any explicit UA passes.
-                 "User-Agent": "radcopilot/0.1"},
+                 "User-Agent": "radquant/0.1"},
     )
     t0 = time.time()
     try:
@@ -348,7 +348,7 @@ def main() -> None:
     ap.add_argument("--with-openi", action="store_true")
     args = ap.parse_args()
 
-    print("Medical Radiology Copilot — automated setup")
+    print("RadQuant — automated setup")
     hf, groq = step_validate_env()
     quant = step_detect_gpu()
     if not args.skip_install:

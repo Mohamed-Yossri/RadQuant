@@ -3,10 +3,10 @@
 Fast and deterministic — uses synthetic findings, no model load.
 """
 
-from radcopilot.nodes.triage import (
+from radquant.nodes.triage import (
     WEIGHTS, urgency_score, tier_of, validate_coverage,
 )
-from radcopilot.worklist import Case, Worklist
+from radquant.worklist import Case, Worklist
 
 
 def test_tier_map_covers_all_18_pathologies():

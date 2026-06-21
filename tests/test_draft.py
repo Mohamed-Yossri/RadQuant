@@ -1,7 +1,7 @@
 """Phase 4 unit tests: draft parsing + findings summary (fast, no model)."""
 
-from radcopilot.nodes.draft import parse_sections
-from radcopilot.prompts.draft_report import format_findings_summary, top_findings_above
+from radquant.nodes.draft import parse_sections
+from radquant.prompts.draft_report import format_findings_summary, top_findings_above
 
 
 def test_parse_plain_headers():

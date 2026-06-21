@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from radcopilot.data import sample  # noqa: E402
+from radquant.data import sample  # noqa: E402
 
 
 def hr(title: str) -> None:
@@ -27,7 +27,7 @@ def main() -> None:
 
     # --- Part A: tools directly ------------------------------------------- #
     hr("A. Direct tool sanity (no LLM)")
-    from radcopilot.foundation import (
+    from radquant.foundation import (
         ChestXRayClassifierTool,
         DicomProcessorTool,
         ImageVisualizerTool,
@@ -58,7 +58,7 @@ def main() -> None:
     # --- Part B: full agent ----------------------------------------------- #
     hr("B. Groq-orchestrated agent (reasoning trace)")
     from langchain_core.messages import HumanMessage
-    from radcopilot.foundation import build_agent
+    from radquant.foundation import build_agent
 
     agent, tools = build_agent(device="cuda", temp_dir="temp")
     print("tools registered:", list(tools))

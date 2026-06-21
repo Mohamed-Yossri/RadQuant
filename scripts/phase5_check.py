@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from radcopilot.nodes.qc import find_omissions
+from radquant.nodes.qc import find_omissions
 
 
 def show(label: str, oms: list) -> None:

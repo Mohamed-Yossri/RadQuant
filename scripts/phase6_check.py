@@ -12,7 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from radcopilot.nodes.explain import explain_report, build_glossary, highlight_html
+from radquant.nodes.explain import explain_report, build_glossary, highlight_html
 
 # A real-style CT report (modality-agnostic path: text only, not a chest X-ray).
 REPORT = (
@@ -59,7 +59,7 @@ def main() -> None:
 
     print("\n\033[32m✓ Phase 6 check passed — modality-agnostic explainer + glossary + "
           "hover highlighting.\033[0m")
-    print("  View: streamlit run radcopilot/ui/explainer.py")
+    print("  View: streamlit run radquant/ui/explainer.py")
 
 
 if __name__ == "__main__":

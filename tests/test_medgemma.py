@@ -10,8 +10,8 @@ torch = pytest.importorskip("torch")
 if not torch.cuda.is_available():
     pytest.skip("CUDA GPU required for MedGemma", allow_module_level=True)
 
-from radcopilot.data import sample
-from radcopilot.models import get_medgemma
+from radquant.data import sample
+from radquant.models import get_medgemma
 
 GPU_VRAM_GB = torch.cuda.get_device_properties(0).total_memory / 1e9
 

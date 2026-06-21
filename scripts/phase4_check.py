@@ -17,11 +17,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from PIL import Image
 
-from radcopilot.data import sample
-from radcopilot.nodes.classify import classify_image
-from radcopilot.nodes.draft import draft_report
-from radcopilot.nodes.visualize import gradcam_overlay
-from radcopilot.prompts.draft_report import _pretty, top_findings_above
+from radquant.data import sample
+from radquant.nodes.classify import classify_image
+from radquant.nodes.draft import draft_report
+from radquant.nodes.visualize import gradcam_overlay
+from radquant.prompts.draft_report import _pretty, top_findings_above
 
 
 def main() -> None:
@@ -69,7 +69,7 @@ def main() -> None:
     print(f"\n✓ Grad-CAM overlay for top finding '{top}' -> {heat_path} ({w}x{h})")
 
     print("\n\033[32m✓ Phase 4 check passed — draft (FINDINGS+IMPRESSION) + heatmap produced.\033[0m")
-    print("  View: streamlit run radcopilot/ui/case_view.py")
+    print("  View: streamlit run radquant/ui/case_view.py")
 
 
 if __name__ == "__main__":

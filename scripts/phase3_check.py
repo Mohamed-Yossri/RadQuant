@@ -15,10 +15,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from radcopilot.data import sample
-from radcopilot.nodes.classify import classify_image
-from radcopilot.nodes.triage import tier_of, validate_coverage
-from radcopilot.worklist import Worklist
+from radquant.data import sample
+from radquant.nodes.classify import classify_image
+from radquant.nodes.triage import tier_of, validate_coverage
+from radquant.worklist import Worklist
 
 
 def main() -> None:
@@ -58,7 +58,7 @@ def main() -> None:
 
     path = wl.save()
     print(f"\n✓ worklist saved → {path}")
-    print("\n\033[32m✓ Phase 3 check passed.\033[0m  View: streamlit run radcopilot/ui/worklist.py")
+    print("\n\033[32m✓ Phase 3 check passed.\033[0m  View: streamlit run radquant/ui/worklist.py")
 
 
 if __name__ == "__main__":

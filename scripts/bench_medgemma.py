@@ -15,8 +15,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import torch  # noqa: E402
 from PIL import Image  # noqa: E402
 
-from radcopilot.data import sample  # noqa: E402
-from radcopilot.models import get_medgemma  # noqa: E402
+from radquant.data import sample  # noqa: E402
+from radquant.models import get_medgemma  # noqa: E402
 
 
 def main() -> None:

@@ -1,8 +1,8 @@
-# Medical Radiology Copilot — Build Plan
+# RadQuant — Build Plan
 
 ## Project overview
 
-An open-source, locally-deployable AI copilot for radiologists, built as a modernized, workflow-focused extension of **MedRAX** (ICML 2025). The system assists with chest X-ray (CXR) interpretation across four core workflows:
+An open-source, locally-deployable AI assistant for radiologists, built as a modernized, workflow-focused extension of **MedRAX** (ICML 2025). The system assists with chest X-ray (CXR) interpretation across four core workflows:
 
 1. **Case triage** — urgency-based worklist reordering driven by classifier output
 2. **Draft report generation** — MedGemma drafts Findings/Impression grounded in classifier findings
@@ -118,7 +118,7 @@ The setup script handles all data acquisition. The choice of dataset for any giv
 
 **Forbidden datasets (do not auto-fetch):** MIMIC-CXR (4.7TB + PhysioNet credentialing), CheXpert (440GB + registration), full NIH ChestX-ray14 (45GB). If a use case seems to require one of these, document why and ask first.
 
-**Auto-selection rule for sample images:** When a phase needs N sample images for testing, the setup script provides a helper `radcopilot.data.sample(n, pathology=None, modality="cxr")` that returns N images from the ChestAgentBench figures (default), filtered by pathology if specified. Test code should call this helper rather than hardcoding file paths.
+**Auto-selection rule for sample images:** When a phase needs N sample images for testing, the setup script provides a helper `radquant.data.sample(n, pathology=None, modality="cxr")` that returns N images from the ChestAgentBench figures (default), filtered by pathology if specified. Test code should call this helper rather than hardcoding file paths.
 
 ## Constraints (hard rules)
 
@@ -138,9 +138,9 @@ The setup script handles all data acquisition. The choice of dataset for any giv
 
 1. **Repo scaffold.** Create the project structure:
    ```
-   radcopilot/
+   radquant/
      external/medrax/         # MedRAX vendored (git clone target)
-     radcopilot/
+     radquant/
        nodes/                 # LangGraph nodes (one file per node)
        prompts/               # MedGemma prompt templates
        models/                # Model loaders, wrappers
@@ -165,7 +165,7 @@ The setup script handles all data acquisition. The choice of dataset for any giv
 
    a. **Validate `.env`** exists with `HF_TOKEN` and `GROQ_API_KEY`. If missing, generate `.env.example` and exit with a clear error pointing the user at the "User actions required" section of PLAN.md.
 
-   b. **Detect GPU class.** Read `nvidia-smi` output. If VRAM ≤ 16 GB → set `RADCOPILOT_QUANT=4bit`. If 16–32 GB → `RADCOPILOT_QUANT=bf16`. Write to `.env.runtime`.
+   b. **Detect GPU class.** Read `nvidia-smi` output. If VRAM ≤ 16 GB → set `RADQUANT_QUANT=4bit`. If 16–32 GB → `RADQUANT_QUANT=bf16`. Write to `.env.runtime`.
 
    c. **Install dependencies** via `pip install -e .` from a `pyproject.toml` with pinned versions (see Tech stack table). Required: `transformers`, `torch`, `accelerate`, `bitsandbytes`, `langgraph`, `langchain`, `langchain-openai`, `torchxrayvision`, `pytorch-grad-cam`, `pydicom`, `SimpleITK`, `Pillow`, `numpy`, `pandas`, `streamlit`, `python-dotenv`, `huggingface-hub`.
 
@@ -185,15 +185,15 @@ The setup script handles all data acquisition. The choice of dataset for any giv
 
    k. **Print a summary.** GPU class detected, quantization chosen, MedGemma load time, VRAM at idle, data paths, Groq latency. End with "✓ Setup complete."
 
-3. **Write `scripts/smoke_test.py`** that exercises the full stack: load a sample image via `radcopilot.data.sample(1)`, run it through classifier → MedGemma multimodal → MedGemma text-only → Groq orchestrator. Each step prints OK or fails fast.
+3. **Write `scripts/smoke_test.py`** that exercises the full stack: load a sample image via `radquant.data.sample(1)`, run it through classifier → MedGemma multimodal → MedGemma text-only → Groq orchestrator. Each step prints OK or fails fast.
 
-**Done when:** A fresh Lightning.ai studio can run `git clone ... && cd radcopilot && python scripts/setup.py && python scripts/smoke_test.py` and both succeed end-to-end. The human's only manual involvement was filling out `.env` and clicking accept on the MedGemma HF page.
+**Done when:** A fresh Lightning.ai studio can run `git clone ... && cd radquant && python scripts/setup.py && python scripts/smoke_test.py` and both succeed end-to-end. The human's only manual involvement was filling out `.env` and clicking accept on the MedGemma HF page.
 
 ---
 
 ## Phase 1 — Strip MedRAX to its essentials
 
-**Goal:** A minimal MedRAX-derived scaffold with only the tools we keep, importable as `radcopilot.foundation`.
+**Goal:** A minimal MedRAX-derived scaffold with only the tools we keep, importable as `radquant.foundation`.
 
 **Tasks:**
 1. From MedRAX, identify and extract the modules for: `DicomProcessorTool`, `ChestXRayClassifierTool` (TorchXRayVision wrapper), `ImageVisualizerTool`, and the `initialize_agent` pattern.
@@ -210,7 +210,7 @@ The setup script handles all data acquisition. The choice of dataset for any giv
 **Goal:** MedGemma 1.5 4B is loaded as a singleton, exposed via a clean Python API for image+text and text-only inference, and wrapped as a LangGraph-callable tool.
 
 **Tasks:**
-1. Implement `radcopilot/models/medgemma.py`:
+1. Implement `radquant/models/medgemma.py`:
    - Singleton loader with VRAM-aware quantization (auto-detect T4 → 4-bit, L4 → bf16).
    - `generate(image: PIL.Image | None, prompt: str, max_new_tokens: int = 512) -> str` interface.
    - Supports both multimodal (image + text) and text-only paths.
@@ -229,8 +229,8 @@ The setup script handles all data acquisition. The choice of dataset for any giv
 **Goal:** A classifier-driven urgency scoring system and an in-memory worklist data model.
 
 **Tasks:**
-1. Implement `radcopilot/nodes/classify.py`: runs TorchXRayVision on the image, returns `{pathology: probability}` for all 18 classes.
-2. Implement `radcopilot/nodes/triage.py`:
+1. Implement `radquant/nodes/classify.py`: runs TorchXRayVision on the image, returns `{pathology: probability}` for all 18 classes.
+2. Implement `radquant/nodes/triage.py`:
    - Define pathology weights in a config file, anchored on the **ACR Actionable Reporting Work Group's three-tier critical findings framework** and the **Annarumma/Baltruschat published urgency ordering** for CXR worklist prioritization (European Radiology, simulation paper).
    - Tier mapping for the 18 TorchXRayVision classes:
 
@@ -244,10 +244,10 @@ The setup script handles all data acquisition. The choice of dataset for any giv
    - `urgency_score = sum(weight[p] * prob[p] for p in pathologies)`
    - **Caveat to document in code comments and demo:** weights are literature-anchored defaults, not site-validated. Real deployment would calibrate against local data and a radiologist's review. This is acknowledged limitation, not hidden.
    - References: ACR Actionable Reporting Work Group (https://www.acr.org/Clinical-Resources/Practice-Parameters-and-Technical-Standards); Annarumma et al., "Automated triaging of adult chest radiographs with deep artificial neural networks," Radiology 2019; Baltruschat et al., "Smart chest X-ray worklist prioritization using artificial intelligence: a clinical workflow simulation," European Radiology 2021.
-3. Implement `radcopilot/worklist.py`: a simple in-memory store of cases keyed by `case_id`, sortable by `urgency_score`. Persist to a JSON file for session continuity.
+3. Implement `radquant/worklist.py`: a simple in-memory store of cases keyed by `case_id`, sortable by `urgency_score`. Persist to a JSON file for session continuity.
 4. Streamlit page `ui/worklist.py`: table view, sorted by urgency descending, columns for case_id, top findings, urgency score, status.
 
-**Done when:** Calling `radcopilot.data.sample(20)` and pushing each through the classify → triage pipeline produces a sorted worklist where any case with pneumothorax probability > 0.5 surfaces in the top quartile.
+**Done when:** Calling `radquant.data.sample(20)` and pushing each through the classify → triage pipeline produces a sorted worklist where any case with pneumothorax probability > 0.5 surfaces in the top quartile.
 
 ---
 
@@ -256,13 +256,13 @@ The setup script handles all data acquisition. The choice of dataset for any giv
 **Goal:** Given an image and classifier findings, MedGemma produces a structured Findings + Impression draft.
 
 **Tasks:**
-1. Design the prompt template in `radcopilot/prompts/draft_report.py`. The prompt must:
+1. Design the prompt template in `radquant/prompts/draft_report.py`. The prompt must:
    - Take the image
    - Take a structured summary of the top classifier findings (e.g., "Classifier detected: right pleural effusion (0.82), cardiomegaly (0.65)")
    - Ask MedGemma to produce two sections: `FINDINGS:` (descriptive observations) and `IMPRESSION:` (interpretive summary)
    - Instruct: "If a classifier finding is not visually supported, you may dismiss it. Do not invent findings the classifier did not detect and you cannot see."
-2. Implement `radcopilot/nodes/draft.py`: calls MedGemma with the prompt, parses the two sections out of the output, populates `state["draft_findings"]` and `state["draft_impression"]`.
-3. Implement `radcopilot/nodes/visualize.py`: Grad-CAM on the classifier's top-1 finding, overlay heatmap on the original image, save to disk, store path in state.
+2. Implement `radquant/nodes/draft.py`: calls MedGemma with the prompt, parses the two sections out of the output, populates `state["draft_findings"]` and `state["draft_impression"]`.
+3. Implement `radquant/nodes/visualize.py`: Grad-CAM on the classifier's top-1 finding, overlay heatmap on the original image, save to disk, store path in state.
 4. Streamlit page `ui/case_view.py`: image with toggle for heatmap overlay, side-by-side editable text areas for Findings and Impression.
 
 **Done when:** Loading a sample CXR produces a draft report where every classifier finding > 0.5 is either mentioned in the Findings section or visually dismissed, and the heatmap overlay highlights the region the classifier focused on.
@@ -274,11 +274,11 @@ The setup script handles all data acquisition. The choice of dataset for any giv
 **Goal:** After the radiologist edits, a final pass that flags classifier findings with no corresponding mention in the report.
 
 **Tasks:**
-1. Implement `radcopilot/nodes/qc.py`:
+1. Implement `radquant/nodes/qc.py`:
    - Take `state["final_report"]` (radiologist-edited) and `state["findings"]`.
    - For each finding with probability > 0.7, ask MedGemma (text-only): "Does this report mention any of: [synonyms list for the pathology]? Reply YES or NO with one sentence of justification."
    - If NO, add to `state["omissions"]` with the finding name, confidence, and suggested phrasing.
-2. Build a synonym map (e.g., "pleural effusion" → ["effusion", "fluid in the pleural space", "blunting of the costophrenic angle"]) in `radcopilot/prompts/synonyms.py`. This avoids false-positive omissions when the radiologist used a different phrasing.
+2. Build a synonym map (e.g., "pleural effusion" → ["effusion", "fluid in the pleural space", "blunting of the costophrenic angle"]) in `radquant/prompts/synonyms.py`. This avoids false-positive omissions when the radiologist used a different phrasing.
 3. Streamlit widget: shows a soft warning panel listing omissions, with "Dismiss" and "Add to report" buttons per omission.
 
 **Done when:** Test cases pass:
@@ -293,7 +293,7 @@ The setup script handles all data acquisition. The choice of dataset for any giv
 **Goal:** A modality-agnostic mode that takes any radiology report and produces a plain-language patient-facing version.
 
 **Tasks:**
-1. Implement `radcopilot/nodes/explain.py`: takes report text, calls MedGemma text-only with a prompt asking for plain-language translation while preserving clinical accuracy and severity.
+1. Implement `radquant/nodes/explain.py`: takes report text, calls MedGemma text-only with a prompt asking for plain-language translation while preserving clinical accuracy and severity.
 2. Implement term-highlighting: a post-processing pass that identifies medical jargon in the original report and inserts hover-explanations from MedGemma in the patient version.
 3. Streamlit page `ui/explainer.py`: paste-in or upload report text → side-by-side original + patient version with highlighted terms.
 4. **Important constraint:** This mode is for *radiologist-approved* report translation, not direct-to-patient generation. The UI must make this clear (e.g., "Draft for radiologist approval before sharing").
@@ -307,7 +307,7 @@ The setup script handles all data acquisition. The choice of dataset for any giv
 **Goal:** All nodes wired into the LangGraph state machine, accessible through a unified Streamlit interface.
 
 **Tasks:**
-1. Implement `radcopilot/graph.py`: defines the full graph with conditional edges:
+1. Implement `radquant/graph.py`: defines the full graph with conditional edges:
    - `ingest → classify → triage → visualize → draft → review`
    - `review → qc → END` (default)
    - `review → draft` (if radiologist clicked "Regenerate")

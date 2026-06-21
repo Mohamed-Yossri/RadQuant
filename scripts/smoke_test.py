@@ -16,8 +16,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from radcopilot import config  # noqa: E402
-from radcopilot.data import sample  # noqa: E402
+from radquant import config  # noqa: E402
+from radquant.data import sample  # noqa: E402
 
 
 def step(name: str):
@@ -123,7 +123,7 @@ def main() -> None:
     req = urllib.request.Request(
         f"{config.GROQ_BASE_URL}/chat/completions", data=body,
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
-                 "User-Agent": "radcopilot/0.1"},  # Cloudflare 403s default urllib UA
+                 "User-Agent": "radquant/0.1"},  # Cloudflare 403s default urllib UA
     )
     with urllib.request.urlopen(req, timeout=60) as resp:
         data = json.load(resp)

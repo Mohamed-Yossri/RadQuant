@@ -4,7 +4,7 @@ Deterministic — no model load. Covers the three PLAN.md done-when cases plus
 threshold and synonym behaviour.
 """
 
-from radcopilot.nodes.qc import find_omissions
+from radquant.nodes.qc import find_omissions
 
 # Stub judges (the LLM is only consulted when no synonym matches lexically).
 JUDGE_NO = lambda prompt: "NO. The report does not address it."

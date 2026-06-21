@@ -1,6 +1,6 @@
 """Phase 6 unit tests: glossary parsing + HTML highlighting (fast, no model)."""
 
-from radcopilot.nodes.explain import parse_glossary, highlight_html
+from radquant.nodes.explain import parse_glossary, highlight_html
 
 
 def test_parse_glossary_basic():

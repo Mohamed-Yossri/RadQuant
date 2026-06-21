@@ -13,7 +13,7 @@ are the corrections).
 ## Credentials
 - Provided as Lightning **secrets**, exported into the env: `HF_TOKEN`,
   **`GROQ_TOKEN`** (the plan called it `GROQ_API_KEY`; we accept either).
-- Resolve them only via `radcopilot.config` (`hf_token()`, `groq_key()`).
+- Resolve them only via `radquant.config` (`hf_token()`, `groq_key()`).
 
 ## Verified external facts
 - MedGemma: `google/medgemma-1.5-4b-it`, arch `Gemma3ForConditionalGeneration`,
@@ -32,13 +32,13 @@ are the corrections).
 
 ## Phase status
 - Phase 0: scaffold + `scripts/setup.py` + `scripts/smoke_test.py`. DONE.
-- Phase 1: `radcopilot.foundation` — stripped MedRAX subset (classifier, DICOM,
+- Phase 1: `radquant.foundation` — stripped MedRAX subset (classifier, DICOM,
   visualizer + LangGraph `Agent`) rewired to Groq `gpt-oss-120b`. Verified by
   `scripts/phase1_check.py` (agent chains tools + returns correct top-3). DONE.
   - Note: foundation is a *vendored derivative* of MedRAX (Apache-2.0) under
-    `radcopilot/foundation/` with `NOTICE.md`, NOT an import of `external/medrax`
+    `radquant/foundation/` with `NOTICE.md`, NOT an import of `external/medrax`
     (whose `tools/__init__.py` eagerly imports LLaVA/RoentGen/etc. and would fail).
-- Phase 2: `radcopilot/models/medgemma.py` — VRAM-aware singleton (`get_medgemma`,
+- Phase 2: `radquant/models/medgemma.py` — VRAM-aware singleton (`get_medgemma`,
   `generate(image|None, prompt)`), `MedGemmaVQATool` LangChain wrapper. Verified:
   `tests/test_medgemma.py` (3 pass), `scripts/bench_medgemma.py`. DONE.
   - Measured on L4 bf16: ~15.6 tok/s decode, peak VRAM **8.7 GB / 24 GB**, 15s load.
@@ -78,3 +78,15 @@ are the corrections).
     term with everyday words" prompt; phase6_check now asserts hard jargon
     (intraparenchymal/vasogenic/...) is ABSENT from the plain version so an echo
     can never pass again.
+- Phase 7: `graph.py` (full LangGraph state machine, human-in-the-loop interrupt
+  before `review`, `run_to_review`/`resume_review` helpers), unified Streamlit
+  app `ui/app.py` (st.navigation: Worklist/Case/Explainer/Settings) with a shared
+  design system `ui/theme.py` + `.streamlit/config.toml`. Verified:
+  `tests/test_graph.py` (5 pass), `scripts/phase7_check.py` (real graph
+  end-to-end), headless app boot (/healthz 200). DONE.
+
+## Naming (locked)
+- The project AND platform name is **RadQuant** — nothing else. The Python
+  package is `radquant`; runtime env vars are `RADQUANT_QUANT/_DEVICE/_VRAM_MB`.
+  (Renamed from the original `radcopilot`/"Medical Radiology Copilot" on user
+  request; the word "copilot" must not reappear anywhere.)

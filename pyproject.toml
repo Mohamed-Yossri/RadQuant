@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "radcopilot"
+name = "radquant"
 version = "0.1.0"
-description = "Medical Radiology Copilot — a workflow-focused, locally-deployable extension of MedRAX for chest X-ray interpretation."
+description = "RadQuant — a workflow-focused, locally-deployable extension of MedRAX for chest X-ray interpretation."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
@@ -43,5 +43,5 @@ quant = ["bitsandbytes>=0.43"]
 dev = ["pytest>=8.0"]
 
 [tool.setuptools.packages.find]
-include = ["radcopilot*"]
+include = ["radquant*"]
 exclude = ["external*", "data*", "tests*", "scripts*"]
