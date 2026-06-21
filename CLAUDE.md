@@ -54,3 +54,11 @@ are the corrections).
     additive sum lets many co-elevated findings outrank one true critical finding.
     The real-data script only asserts pipeline-correctness + sort order, and
     reports the OOD caveat. Do not "fix" by gaming the figure data.
+- Phase 4: `prompts/draft_report.py`, `nodes/draft.py` (MedGemma FINDINGS/
+  IMPRESSION, regex section parse), `nodes/visualize.py` (Grad-CAM on classifier
+  top-1, target layer `features.norm5`), `ui/case_view.py`. Verified:
+  `tests/test_draft.py` (6 pass), `scripts/phase4_check.py`. DONE.
+  - On OOD figures MedGemma correctly DISMISSES borderline (~0.5) classifier
+    findings via a clean report ("lungs are clear") rather than inventing them —
+    that counts as "visually dismissed" per the done-when. The grounding check is
+    dismissal-aware (blanket-normal phrasing covers unnamed findings).

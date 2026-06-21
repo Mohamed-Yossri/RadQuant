@@ -9,6 +9,8 @@ from .triage import (
     TIERS,
     WEIGHTS,
 )
+from .draft import draft, draft_report, parse_sections
+from .visualize import visualize, gradcam_overlay
 
 __all__ = [
     "classify",
@@ -20,4 +22,9 @@ __all__ = [
     "tier_of",
     "TIERS",
     "WEIGHTS",
+    "draft",
+    "draft_report",
+    "parse_sections",
+    "visualize",
+    "gradcam_overlay",
 ]
