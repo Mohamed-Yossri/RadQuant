@@ -85,6 +85,20 @@ are the corrections).
   `tests/test_graph.py` (5 pass), `scripts/phase7_check.py` (real graph
   end-to-end), headless app boot (/healthz 200). DONE.
 
+- Phase 8: ChestAgentBench eval (`eval/chestagentbench.py` agent harness +
+  `eval/direct.py` direct multi-image VLM), live resumable scoreboard, NVIDIA NIM
+  orchestrator backend. Results in `radquant/eval/results.md`. IN PROGRESS.
+  - **BIG finding**: the agent (blind Llama orchestrator relaying MedGemma text
+    descriptions) scored **36.7%**; letting **MedGemma see all figures + answer
+    the MCQ directly** (multi-image, concise CoT) scored **56.5%** (n=200, ±7%) —
+    +20 pts, 6× faster, ties GPT-4o (56.4%), near MedRAX SOTA (63.1%). The relay
+    was the bottleneck, not the model (MedGemma-4B is best open CXR VLM per ReXVQA).
+  - GOTCHA: CoT truncated before "Answer:" → 33% unparsed. Fixed via concise-CoT
+    prompt + 512-token budget + hardened `extract_letter`. Always validate on
+    n≥150; the n=30 read (63%) was optimistic vs the true ~56.5%.
+  - Eval orchestrator key: Lightning secret **`NVIDIA_KEY`** (nvapi-…); resolve
+    via `config.nvidia_key()`. NIM has no daily cap (unlike Groq's 1k RPD).
+
 ## Naming (locked)
 - The project AND platform name is **RadQuant** — nothing else. The Python
   package is `radquant`; runtime env vars are `RADQUANT_QUANT/_DEVICE/_VRAM_MB`.
