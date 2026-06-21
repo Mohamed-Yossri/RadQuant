@@ -32,6 +32,8 @@ def main() -> None:
     # direct multi-image VLM mode (Experiment 1+) and its ablations
     ap.add_argument("--direct", action="store_true",
                     help="MedGemma answers the MCQ directly (multi-image), no agent")
+    ap.add_argument("--agentic", action="store_true",
+                    help="MedGemma perceive->decide agent with self-rated confidence")
     ap.add_argument("--tag", default=None, help="results filename tag (direct mode)")
     ap.add_argument("--no-cot", action="store_true", help="disable chain-of-thought")
     ap.add_argument("--answer-first", action="store_true",
@@ -47,7 +49,12 @@ def main() -> None:
     mode = "FULL" if args.full else f"limit={args.limit}, stratified={args.stratified}"
 
     try:
-        if args.direct:
+        if args.agentic:
+            from radquant.eval.agentic import run_agentic
+            tag = args.tag or "agentic"
+            print(f"ChestAgentBench AGENTIC — {mode}, {len(records)} questions\n")
+            run_agentic(records, tag=tag, classifier_hint=args.classifier)
+        elif args.direct:
             from radquant.eval.direct import run_direct
             tag = args.tag or ("direct" if not args.classifier else "direct_clf")
             print(f"ChestAgentBench DIRECT — {mode}, {len(records)} questions\n")
