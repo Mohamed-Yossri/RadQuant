@@ -117,12 +117,15 @@ class MedGemma:
         max_new_tokens: int = 384,
         do_sample: bool = False,
         temperature: float = 0.7,
+        pan_and_scan: bool = False,
     ) -> str:
         """Generate over MULTIPLE interleaved images (Gemma3 multi-image).
 
         Args:
             images: list of PIL images or path strings.
             labels: optional per-image captions (e.g. ["Figure 1", "Figure 2A"]).
+            pan_and_scan: tile large/non-square images into crops for higher
+                effective resolution (helps multi-panel / annotated figures).
         """
         pil = [(Image.open(i) if isinstance(i, str) else i).convert("RGB") for i in images]
         content: list[dict] = []
@@ -137,9 +140,14 @@ class MedGemma:
             messages.append({"role": "system", "content": [{"type": "text", "text": system}]})
         messages.append({"role": "user", "content": content})
 
+        pas_kwargs = (
+            {"do_pan_and_scan": True, "pan_and_scan_max_num_crops": 2,
+             "pan_and_scan_min_crop_size": 256, "pan_and_scan_min_ratio_to_activate": 1.2}
+            if pan_and_scan else {}
+        )
         inputs = self.processor.apply_chat_template(
             messages, add_generation_prompt=True, tokenize=True,
-            return_dict=True, return_tensors="pt",
+            return_dict=True, return_tensors="pt", **pas_kwargs,
         ).to(self.model.device)
         in_len = inputs["input_ids"].shape[-1]
         gen = self.model.generate(

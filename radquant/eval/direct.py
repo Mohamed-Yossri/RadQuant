@@ -61,7 +61,7 @@ def _classifier_hint(image_paths: List[str]) -> Optional[str]:
 
 
 def answer_direct(mg, record: dict, cot: bool = True, with_classifier: bool = False,
-                  answer_first: bool = False, k: int = 1,
+                  answer_first: bool = False, k: int = 1, pan_and_scan: bool = False,
                   max_new_tokens: int = 512) -> Tuple[Optional[str], str]:
     """Answer one record with MedGemma directly. Returns (letter, raw_first_sample)."""
     imgs = record["image_paths"][:MAX_FIGURES]
@@ -75,7 +75,7 @@ def answer_direct(mg, record: dict, cot: bool = True, with_classifier: bool = Fa
         raw = mg.generate_multi(
             imgs, prompt, labels=labels, system=DIRECT_SYSTEM,
             max_new_tokens=max_new_tokens,
-            do_sample=(k > 1), temperature=0.7,
+            do_sample=(k > 1), temperature=0.7, pan_and_scan=pan_and_scan,
         )
         if s == 0:
             first_raw = raw
@@ -89,7 +89,7 @@ def answer_direct(mg, record: dict, cot: bool = True, with_classifier: bool = Fa
 
 def run_direct(records: List[dict], tag: str = "direct", cot: bool = True,
                with_classifier: bool = False, answer_first: bool = False,
-               k: int = 1, every: int = 5) -> Scoreboard:
+               k: int = 1, pan_and_scan: bool = False, every: int = 5) -> Scoreboard:
     """Resumable direct-VLM eval with a live scoreboard. Stores raw output to audit."""
     from radquant.models import get_medgemma
 
@@ -116,7 +116,8 @@ def run_direct(records: List[dict], tag: str = "direct", cot: bool = True,
             try:
                 pred, raw = answer_direct(mg, rec, cot=cot,
                                           with_classifier=with_classifier,
-                                          answer_first=answer_first, k=k)
+                                          answer_first=answer_first, k=k,
+                                          pan_and_scan=pan_and_scan)
                 err = None
             except Exception as e:  # noqa: BLE001
                 pred, raw, err = None, "", str(e)[:160]

@@ -37,6 +37,8 @@ def main() -> None:
     ap.add_argument("--answer-first", action="store_true",
                     help="emit 'Answer: X' first, then justify (guarantees a parse)")
     ap.add_argument("--classifier", action="store_true", help="append a classifier hint")
+    ap.add_argument("--pan-scan", action="store_true",
+                    help="enable pan-and-scan high-res image tiling")
     ap.add_argument("--k", type=int, default=1, help="self-consistency samples (majority vote)")
     args = ap.parse_args()
 
@@ -51,7 +53,8 @@ def main() -> None:
             print(f"ChestAgentBench DIRECT — {mode}, {len(records)} questions\n")
             run_direct(records, tag=tag, cot=not args.no_cot,
                        with_classifier=args.classifier,
-                       answer_first=args.answer_first, k=args.k)
+                       answer_first=args.answer_first, k=args.k,
+                       pan_and_scan=args.pan_scan)
         else:
             print(f"ChestAgentBench AGENT — {mode}, {len(records)} q, backend={args.backend}\n")
             run(records, backend=args.backend)

@@ -60,6 +60,26 @@ open VLM. We had been using a strong model through a lossy interface.
 A 33% answer-parse-failure rate (CoT truncating before the answer) was fixed with
 a concise-CoT prompt + adequate token budget + a hardened letter extractor.
 
+## Ablations (what did NOT help)
+
+Tested as paired comparisons on the same 40 questions (best config = greedy
+multi-image CoT, k=1):
+
+| Variant | Accuracy | Δ vs k=1 |
+|---|---|---|
+| **greedy multi-image CoT (k=1)** | **62.5%** | — (best) |
+| + self-consistency (k=5, temp 0.7, majority vote) | 51.5% | **−11 pts** |
+| + pan-and-scan (high-res tiling) | 62.5% | ±0 |
+
+- **Self-consistency hurts**: it requires temperature *sampling*, but a 4B model
+  decodes better *greedily*; the sampling noise outweighs the vote benefit.
+- **Pan-and-scan is neutral**: the figures are already adequately resolved at the
+  base vision resolution.
+
+So the winning recipe is simply: **let MedGemma see all figures and answer with a
+short greedy chain-of-thought.** The big lever was architecture (+20 pts), not
+test-time tricks.
+
 ## Honest limitations
 
 - **200-question subset**, not all 2,500 (±7% CI). The agent figure is n=30.
