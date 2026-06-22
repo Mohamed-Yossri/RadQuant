@@ -115,6 +115,7 @@ RadQuant's signature contribution: **uncertainty-aware abstention**. On the case
 | 📝 | **Draft Report** | FINDINGS/IMPRESSION generation grounded in detected pathologies, with Grad-CAM heatmap visualization | MedGemma 1.5 4B (multimodal) + pytorch-grad-cam |
 | 🎯 | **Finding Localization** | Bounding-box detection of findings (effusion, pneumothorax, opacity, nodule/mass, cardiomegaly) with color-coded overlays — *shows where, not just what* | MedGemma-1.5-4B grounding fine-tune + IoU-NMS |
 | 🫁 | **Anatomy Segmentation** | Translucent lung-field + heart overlays for anatomical context | TorchXRayVision ChestX-Det PSPNet |
+| 🤖 | **Case Assistant** | Ask any question about a case — a tool-using agent calls MedGemma-VQA, the classifier, localization, and segmentation, then answers with cited evidence | LangGraph ReAct + NVIDIA/Groq orchestrator |
 | 🛡️ | **Omission QC** | Safety net that flags high-confidence classifier findings missing from the edited report | Synonym map + MedGemma LLM-as-judge (text-only) |
 | 🗣️ | **Patient Explainer** | Plain-language, modality-agnostic translation of any radiology report (CT, MRI, US, X-ray) | MedGemma 1.5 4B (text-only path) |
 | 📊 | **Selective Prediction** | Per-case confidence scoring via sample-agreement — defers uncertain cases to the radiologist | Multi-sample voting + calibrated abstention |

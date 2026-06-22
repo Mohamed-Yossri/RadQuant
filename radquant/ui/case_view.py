@@ -16,12 +16,43 @@ from radquant.nodes.explain import explain_report
 from radquant.nodes.triage import tier_of
 from radquant.models.auditor import get_auditor, render_overlay, PRETTY
 from radquant.models.segmenter import segment_overlay
+from radquant.assistant import build_assistant, ask
 from radquant.ui import theme
 from radquant.ui.qc_panel import render_omissions_panel
 
 
 def _compose_report(findings_txt: str, impression_txt: str) -> str:
     return f"FINDINGS: {findings_txt}\n\nIMPRESSION: {impression_txt}".strip()
+
+
+def _render_assistant(case, cid: str) -> None:
+    """Interactive tool-using assistant: the orchestrator calls the CV tools."""
+    st.divider()
+    st.subheader("🤖 Ask RadQuant about this case")
+    st.caption("A tool-using agent — the orchestrator calls MedGemma-VQA, the "
+               "classifier, localization, and segmentation to answer. Research demo.")
+
+    hist = st.session_state.setdefault(f"chat_{cid}", [])
+    for role, text, used in hist:
+        with st.chat_message("user" if role == "user" else "assistant"):
+            st.write(text)
+            if used:
+                st.caption("🛠 tools: " + ", ".join(used))
+
+    q = st.chat_input("e.g. Is there an effusion and where? Is the heart enlarged?")
+    if q:
+        akey = f"assistant_{cid}"
+        if akey not in st.session_state:
+            with st.spinner("Starting the case assistant..."):
+                st.session_state[akey] = build_assistant(case.image_path)[0]
+        hist.append(("user", q, []))
+        with st.spinner("RadQuant is reasoning and using its tools..."):
+            try:
+                answer, used = ask(st.session_state[akey], q, thread_id=cid)
+            except Exception as e:  # noqa: BLE001
+                answer, used = f"(assistant error: {e})", []
+        hist.append(("assistant", answer, used))
+        st.rerun()
 
 
 def page() -> None:
@@ -103,6 +134,8 @@ def page() -> None:
                              key=f"f_{cid}")
         i_val = st.text_area("IMPRESSION", value=(art or {}).get("i", ""), height=110,
                              key=f"i_{cid}")
+
+    _render_assistant(case, cid)
 
     if not art or "f" not in art:
         st.caption("Generate a draft to enable QC, finalize, and the explainer.")

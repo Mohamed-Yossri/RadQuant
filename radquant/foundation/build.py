@@ -34,13 +34,25 @@ def _medgemma_tool(device, temp_dir):
     return MedGemmaVQATool()
 
 
+def _localize_tool(device, temp_dir):
+    from radquant.models.cv_tools import LocalizeFindingsTool
+    return LocalizeFindingsTool()
+
+
+def _segment_tool(device, temp_dir):
+    from radquant.models.cv_tools import SegmentAnatomyTool
+    return SegmentAnatomyTool()
+
+
 # name -> factory(device, temp_dir). Mirrors MedRAX's `all_tools` registry,
-# trimmed to the tools RadQuant keeps + the MedGemma VLM (vision for the eval).
+# trimmed to the tools RadQuant keeps + the MedGemma VLM and CV tools.
 _TOOL_FACTORY = {
     "ChestXRayClassifierTool": lambda device, temp_dir: ChestXRayClassifierTool(device=device),
     "DicomProcessorTool": lambda device, temp_dir: DicomProcessorTool(temp_dir=temp_dir),
     "ImageVisualizerTool": lambda device, temp_dir: ImageVisualizerTool(),
     "MedGemmaVQATool": _medgemma_tool,
+    "LocalizeFindingsTool": _localize_tool,
+    "SegmentAnatomyTool": _segment_tool,
 }
 
 # Default tool set for the interactive agent (no MedGemma VLM; the nodes call it
