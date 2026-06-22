@@ -1,19 +1,20 @@
-# Secrets / runtime
+# ======================================
+# RadQuant .gitignore
+# ======================================
+
+# ---------- Secrets / runtime ----------
 .env
 .env.runtime
 
-# Data (downloaded, large — never commit). Root-anchored so it does NOT
-# match the radcopilot/data/ package directory.
+# ---------- Data (large, downloaded) ----------
 /data/
-
-# Vendored upstream
 /external/
 
-# Agent runtime scratch
+# ---------- Runtime artifacts ----------
 /temp/
 /logs/
 
-# Python
+# ---------- Python ----------
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -22,27 +23,56 @@ build/
 dist/
 .pytest_cache/
 .ipynb_checkpoints/
+*.egg
 
-# Model/HF caches (should live in ~/.cache, but guard anyway)
+# ---------- Model / HF caches ----------
 *.safetensors
 *.bin
 
+# ---------- IDE ----------
+.idea/
+.vscode/
+.vscode-server/
+.cursor-server/
+.windsurf-server/
+.copilot/
+
+# ---------- Lightning.ai studio dotfiles ----------
 # This repo root doubles as the studio HOME dir — never track its dotfiles.
 .cache/
 .claude/
 .claude.json
 .config/
-.copilot/
-.cursor-server
 .dotnet/
-.idea/
 .ipython/
 .jupyter
 .lightning_studio/
 .nv/
-.vscode/
-.vscode-server
-.windsurf-server
-*.log
+.npm/
+.nvm/
+.oh-my-zsh/
+.local/
+.ssh/
 .torchxrayvision/
+.antigravity-ide-server/
+.gemini/
+
+# ---------- Shell / system ----------
+.bash_history
+.zsh_history
+.zcompdump*
+.zshrc
+.bashrc
+.profile
+.condarc
+.gitconfig
+.hushlogin
+.sudo_as_admin_successful
+.vimrc
+.wget-hsts
+.docker
+*.log
+
+# ---------- Misc ----------
 main.py
+radquant.egg-info/
