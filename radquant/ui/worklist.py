@@ -12,16 +12,28 @@ from radquant.nodes.triage import tier_of
 from radquant.ui import theme
 
 
-def _seed_demo(n: int) -> None:
-    """Populate the worklist from N sample figures (classify + triage)."""
-    from radquant.data import sample
+def _seed_from_paths(paths, prefix: str) -> None:
+    """Classify + triage each image into the worklist."""
     from radquant.nodes.classify import classify_image
 
     wl = Worklist()
-    with st.spinner(f"Classifying {n} sample studies..."):
-        for i, img in enumerate(sample(n)):
-            wl.add_from_findings(f"case-{i:02d}", str(img), classify_image(str(img)))
+    with st.spinner(f"Classifying {len(paths)} studies..."):
+        for i, img in enumerate(paths):
+            wl.add_from_findings(f"{prefix}-{i:02d}", str(img), classify_image(str(img)))
     wl.save()
+
+
+def _seed_demo(n: int) -> None:
+    from radquant.data import sample
+    _seed_from_paths(sample(n), "case")
+
+
+def _seed_real_cxr() -> None:
+    """Real frontal CXRs (data/demo_cxr) — where the classifier & grounding work well."""
+    from pathlib import Path
+    paths = sorted(Path("data/demo_cxr").glob("*.png")) + \
+        sorted(Path("data/demo_cxr/author").glob("*.png"))
+    _seed_from_paths(paths, "cxr")
 
 
 def page() -> None:
@@ -31,17 +43,21 @@ def page() -> None:
 
     wl = Worklist.load()
 
-    c1, c2, _ = st.columns([1, 1, 2])
-    if c1.button("⟳ Seed demo worklist", use_container_width=True):
+    c1, c2, c3 = st.columns([1.2, 1.2, 1])
+    if c1.button("🫁 Seed real-CXR demo", type="primary", use_container_width=True):
+        _seed_real_cxr()
+        st.rerun()
+    if c2.button("⟳ Seed benchmark figures", use_container_width=True):
         _seed_demo(12)
         st.rerun()
-    if c2.button("🗑 Clear", use_container_width=True):
+    if c3.button("🗑 Clear", use_container_width=True):
         Worklist().save()
         st.rerun()
 
     if len(wl) == 0:
-        st.info("Worklist is empty. Click **Seed demo worklist** to ingest a few "
-                "sample studies through classify → triage.")
+        st.info("Worklist is empty. Click **Seed real-CXR demo** for frontal chest "
+                "X-rays (grounding + classifier work best here), or **Seed benchmark "
+                "figures** for ChestAgentBench cases.")
         return
 
     cases = wl.sorted(descending=True)

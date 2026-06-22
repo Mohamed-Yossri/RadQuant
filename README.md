@@ -113,6 +113,7 @@ RadQuant's signature contribution: **uncertainty-aware abstention**. On the case
 |:---:|---|---|---|
 | 🚦 | **Case Triage** | Classifier-driven urgency scoring reorders the worklist, surfacing critical cases first | TorchXRayVision DenseNet-121 + literature-anchored tiering (ACR/Annarumma/Baltruschat) |
 | 📝 | **Draft Report** | FINDINGS/IMPRESSION generation grounded in detected pathologies, with Grad-CAM heatmap visualization | MedGemma 1.5 4B (multimodal) + pytorch-grad-cam |
+| 🎯 | **Finding Localization** | Bounding-box detection of findings (effusion, pneumothorax, opacity, nodule/mass, cardiomegaly) with color-coded overlays — *shows where, not just what* | MedGemma-1.5-4B grounding fine-tune + IoU-NMS |
 | 🛡️ | **Omission QC** | Safety net that flags high-confidence classifier findings missing from the edited report | Synonym map + MedGemma LLM-as-judge (text-only) |
 | 🗣️ | **Patient Explainer** | Plain-language, modality-agnostic translation of any radiology report (CT, MRI, US, X-ray) | MedGemma 1.5 4B (text-only path) |
 | 📊 | **Selective Prediction** | Per-case confidence scoring via sample-agreement — defers uncertain cases to the radiologist | Multi-sample voting + calibrated abstention |
@@ -458,6 +459,7 @@ This project builds directly on **MedRAX** and must be cited prominently.
 - **MedGemma**: Google, "Next-generation medical image interpretation with MedGemma 1.5." [Blog](https://research.google/blog/next-generation-medical-image-interpretation-with-medgemma-15-and-medical-speech-to-text-with-medasr/)
 - **TorchXRayVision**: Cohen et al., MIDL 2022. [GitHub](https://github.com/mlmed/torchxrayvision)
 - **ChestAgentBench**: Wang Lab. [HuggingFace](https://huggingface.co/datasets/wanglab/chest-agent-bench)
+- **CXR grounding model**: `alex-feeel/medgemma-cxr-auditor-v2` — a MedGemma-1.5-4B fine-tune for bounding-box findings ([CXR Draft Auditor](https://huggingface.co/spaces/build-small-hackathon/cxr-draft-auditor), HAI-DEF, research-only). Used as RadQuant's localization tool with the author's pinned prompt.
 - **ACR Actionable Reporting**: [ACR Practice Parameters](https://www.acr.org/Clinical-Resources/Practice-Parameters-and-Technical-Standards)
 - **Annarumma et al.**: "Automated triaging of adult chest radiographs with deep artificial neural networks," Radiology 2019.
 - **Baltruschat et al.**: "Smart chest X-ray worklist prioritization using AI," European Radiology 2021.
