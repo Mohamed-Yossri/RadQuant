@@ -32,9 +32,9 @@ dist/
 # ---------- IDE ----------
 .idea/
 .vscode/
-.vscode-server/
-.cursor-server/
-.windsurf-server/
+.vscode-server
+.cursor-server
+.windsurf-server
 .copilot/
 
 # ---------- Lightning.ai studio dotfiles ----------
