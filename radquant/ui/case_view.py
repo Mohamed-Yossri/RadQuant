@@ -15,6 +15,7 @@ from radquant.nodes.qc import find_omissions
 from radquant.nodes.explain import explain_report
 from radquant.nodes.triage import tier_of
 from radquant.models.auditor import get_auditor, render_overlay, PRETTY
+from radquant.models.segmenter import segment_overlay
 from radquant.ui import theme
 from radquant.ui.qc_panel import render_omissions_panel
 
@@ -44,8 +45,8 @@ def page() -> None:
     st.markdown(head, unsafe_allow_html=True)
 
     key = f"art_{cid}"
-    b1, b2 = st.columns(2)
-    if b1.button("⚙️ Generate draft + Grad-CAM", type="primary", use_container_width=True):
+    b1, b2, b3 = st.columns(3)
+    if b1.button("⚙️ Draft + Grad-CAM", type="primary", use_container_width=True):
         with st.spinner("Classifying, drafting (MedGemma), and computing Grad-CAM..."):
             findings = case.findings or classify_image(case.image_path)
             f_text, i_text, _ = draft_report(case.image_path, findings)
@@ -53,12 +54,17 @@ def page() -> None:
         st.session_state.setdefault(key, {})
         st.session_state[key].update({"findings": findings, "f": f_text, "i": i_text,
                                       "heat": heat, "top": top})
-    if b2.button("🔍 Localize findings (grounding)", use_container_width=True):
+    if b2.button("🔍 Localize (boxes)", use_container_width=True):
         with st.spinner("Detecting & localizing findings (auditor model)..."):
             gf = get_auditor().detect(case.image_path)
             overlay = render_overlay(case.image_path, gf) if gf else None
         st.session_state.setdefault(key, {})
         st.session_state[key].update({"ground": gf, "ground_overlay": overlay})
+    if b3.button("🫁 Segment anatomy", use_container_width=True):
+        with st.spinner("Segmenting lung fields & heart (PSPNet)..."):
+            seg, present = segment_overlay(case.image_path)
+        st.session_state.setdefault(key, {})
+        st.session_state[key].update({"seg_overlay": seg, "seg_present": present})
 
     art = st.session_state.get(key)
 
@@ -69,12 +75,18 @@ def page() -> None:
             views.append("Grad-CAM")
         if art and art.get("ground_overlay"):
             views.append("Grounding boxes")
+        if art and art.get("seg_overlay"):
+            views.append("Segmentation")
         view = st.radio("View", views, horizontal=True,
                         index=len(views) - 1 if len(views) > 1 else 0)
         if view == "Grad-CAM":
             st.image(art["heat"], caption=f"Grad-CAM · {art['top']}", use_container_width=True)
         elif view == "Grounding boxes":
             st.image(art["ground_overlay"], caption="Localized findings (auditor)",
+                     use_container_width=True)
+        elif view == "Segmentation":
+            st.image(art["seg_overlay"],
+                     caption="Anatomy: " + ", ".join(art.get("seg_present", [])),
                      use_container_width=True)
         else:
             st.image(case.image_path, caption=cid, use_container_width=True)
