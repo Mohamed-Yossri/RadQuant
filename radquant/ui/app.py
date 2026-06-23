@@ -28,7 +28,30 @@ def main() -> None:
     # Stash page objects so the worklist's "Open" button can switch programmatically.
     st.session_state["_pages"] = pages
 
-    st.navigation(list(pages.values())).run()
+    nav = st.navigation(list(pages.values()))
+
+    with st.sidebar:
+        st.markdown(
+            """<div style="padding:6px 8px 14px;">
+                 <div style="font-family:'Space Grotesk',sans-serif;font-size:1.45rem;
+                      font-weight:700;letter-spacing:-.02em;line-height:1;">
+                   🫁 Rad<span style="background:linear-gradient(135deg,#22D3EE,#818CF8);
+                      -webkit-background-clip:text;background-clip:text;color:transparent;">Quant</span>
+                 </div>
+                 <div style="color:#8A99AD;font-size:.72rem;margin-top:4px;">
+                   Local · open-weights · private</div>
+               </div>""",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            """<div style="position:fixed;bottom:14px;left:14px;color:#5d6b80;
+                 font-size:.68rem;line-height:1.4;">
+                 MedGemma 1.5 4B · TorchXRayVision<br>Research demo — not for clinical use
+               </div>""",
+            unsafe_allow_html=True,
+        )
+
+    nav.run()
 
 
 if __name__ == "__main__":
