@@ -50,14 +50,18 @@ html, body, .stApp, [class*="css"] { font-family:'Inter',system-ui,sans-serif; }
 }
 .block-container { max-width:1220px; padding-top:1.4rem; padding-bottom:3rem; }
 
-/* ---- hide Streamlit chrome (but KEEP the sidebar collapse/expand control) ---- */
+/* ---- hide only the top-right menu/clutter; DO NOT touch the header geometry or
+       the sidebar collapse/expand control (that broke the reopen button) ---- */
 [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"],
 #MainMenu, footer { display:none !important; }
-[data-testid="stHeader"] { background:transparent !important; height:0 !important; }
-/* the ">>" reopen control lives in the header — keep it visible & on top */
-[data-testid="stSidebarCollapsedControl"] { display:flex !important; z-index:1000; top:.6rem; }
-[data-testid="stSidebarCollapsedControl"] button { background:rgba(45,212,191,.14);
-  border:1px solid rgba(45,212,191,.4); border-radius:10px; color:#5EEAD4; }
+[data-testid="stHeader"] { background:transparent !important; }
+/* style (never hide) the expand-sidebar control across Streamlit versions */
+[data-testid="stSidebarCollapsedControl"] button,
+[data-testid="stExpandSidebarButton"] button,
+[data-testid="stSidebarCollapseButton"] button {
+  background:rgba(45,212,191,.14) !important; border:1px solid rgba(45,212,191,.4) !important;
+  border-radius:10px !important; color:#5EEAD4 !important;
+}
 
 /* ---- typography ---- */
 h1,h2,h3 { font-family:'Space Grotesk','Inter',sans-serif; letter-spacing:-.02em;
