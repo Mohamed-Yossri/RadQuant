@@ -85,6 +85,10 @@ def page() -> None:
         st.session_state.setdefault(key, {})
         st.session_state[key].update({"findings": findings, "f": f_text, "i": i_text,
                                       "heat": heat, "top": top})
+        # stage into a pending buffer; applied to the text widgets before they render
+        st.session_state[f"pend_f_{cid}"] = f_text
+        st.session_state[f"pend_i_{cid}"] = i_text
+        st.rerun()
     if b2.button("🔍 Localize (boxes)", use_container_width=True):
         with st.spinner("Detecting & localizing findings (auditor model)..."):
             gf = get_auditor().detect(case.image_path)
@@ -130,10 +134,16 @@ def page() -> None:
                 st.caption("Grounding: no focal findings detected (or non-frontal image).")
     with right:
         st.markdown("**Draft report** (editable)")
-        f_val = st.text_area("FINDINGS", value=(art or {}).get("f", ""), height=170,
-                             key=f"f_{cid}")
-        i_val = st.text_area("IMPRESSION", value=(art or {}).get("i", ""), height=110,
-                             key=f"i_{cid}")
+        # apply any pending text BEFORE the widgets instantiate (Streamlit forbids
+        # writing a widget's state after it's created in the same run).
+        for _fld in ("f", "i"):
+            _pk = f"pend_{_fld}_{cid}"
+            if _pk in st.session_state:
+                st.session_state[f"{_fld}_{cid}"] = st.session_state.pop(_pk)
+        f_val = st.text_area("FINDINGS", height=170, key=f"f_{cid}",
+                             placeholder="Click ⚙️ Draft + Grad-CAM to generate…")
+        i_val = st.text_area("IMPRESSION", height=110, key=f"i_{cid}",
+                             placeholder="—")
 
     _render_assistant(case, cid)
 
@@ -149,6 +159,8 @@ def page() -> None:
         with st.spinner("Regenerating..."):
             f_text, i_text, _ = draft_report(case.image_path, art["findings"])
         st.session_state[key].update({"f": f_text, "i": i_text})
+        st.session_state[f"pend_f_{cid}"] = f_text
+        st.session_state[f"pend_i_{cid}"] = i_text
         st.rerun()
     if a2.button("🛡️ Run omission QC", use_container_width=True):
         with st.spinner("Checking for omitted high-confidence findings..."):
@@ -163,7 +175,7 @@ def page() -> None:
         to_add = render_omissions_panel(art["omissions"], key_prefix=cid)
         if to_add:
             extra = " ".join(o["suggestion"] for o in to_add)
-            st.session_state[f"i_{cid}"] = (i_val + "\n" + extra).strip()
+            st.session_state[f"pend_i_{cid}"] = (i_val + "\n" + extra).strip()
             st.rerun()
 
     with st.expander("🗣️ Patient-friendly explainer (side-call)"):
