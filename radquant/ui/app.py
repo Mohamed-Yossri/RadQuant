@@ -35,7 +35,7 @@ def main() -> None:
             """<div style="padding:6px 8px 14px;">
                  <div style="font-family:'Space Grotesk',sans-serif;font-size:1.45rem;
                       font-weight:700;letter-spacing:-.02em;line-height:1;">
-                   🫁 Rad<span style="background:linear-gradient(135deg,#22D3EE,#818CF8);
+                   🫁 Rad<span style="background:linear-gradient(135deg,#2DD4BF,#38BDF8);
                       -webkit-background-clip:text;background-clip:text;color:transparent;">Quant</span>
                  </div>
                  <div style="color:#8A99AD;font-size:.72rem;margin-top:4px;">

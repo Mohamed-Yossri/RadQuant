@@ -1,7 +1,7 @@
 """RadQuant design system — shared CSS, header, and status/urgency components.
 
 A cohesive, product-grade visual language: a deep-navy clinical palette with a
-cyan→indigo accent, glassy cards, gradient buttons, and a styled sidebar. The big
+clinical teal→sky accent, glassy cards, gradient buttons, and a styled sidebar. The big
 CSS block below restyles Streamlit's DOM so the app reads like a real web app.
 """
 
@@ -11,13 +11,13 @@ import html
 
 import streamlit as st
 
-# Palette ------------------------------------------------------------------- #
-ACCENT = "#22D3EE"
-ACCENT2 = "#6366F1"
-INK = "#E6ECF5"
-MUTED = "#8A99AD"
-PANEL = "#131C2B"
-LINE = "#243245"
+# Palette (clinical teal/sky on deep slate — PACS-style) -------------------- #
+ACCENT = "#2DD4BF"   # teal-400
+ACCENT2 = "#38BDF8"  # sky-400
+INK = "#E8EEF6"
+MUTED = "#8597AD"
+PANEL = "#101722"
+LINE = "#22304a"
 
 URGENCY = [  # (min_score, label, color)
     (1.5, "CRITICAL", "#F87171"),
@@ -29,29 +29,35 @@ TIER_COLOR = {
     "Critical": "#F87171", "Urgent": "#FB923C",
     "Important": "#FBBF24", "Chronic": "#34D399", "Unknown": "#8A99AD",
 }
-STATUS_COLOR = {"pending": "#8A99AD", "in_review": "#22D3EE", "finalized": "#34D399"}
+STATUS_COLOR = {"pending": "#8A99AD", "in_review": "#2DD4BF", "finalized": "#34D399"}
 
 _CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
 
-:root { --accent:#22D3EE; --accent2:#6366F1; --ink:#E6ECF5; --muted:#8A99AD;
+:root { --accent:#2DD4BF; --accent2:#38BDF8; --ink:#E6ECF5; --muted:#8A99AD;
         --line:rgba(255,255,255,.08); --card:rgba(255,255,255,.03); }
 
 /* ---- base ---- */
 html, body, .stApp, [class*="css"] { font-family:'Inter',system-ui,sans-serif; }
 .stApp {
   background:
-    radial-gradient(1100px 600px at 78% -12%, #18324d 0%, rgba(11,18,32,0) 55%),
-    radial-gradient(900px 500px at -5% 0%, #1a1f4a 0%, rgba(11,18,32,0) 45%),
-    #0A0F1A;
+    linear-gradient(rgba(45,212,191,.022) 1px, transparent 1px) 0 0 / 100% 30px,
+    radial-gradient(1100px 600px at 80% -12%, rgba(45,212,191,.10) 0%, rgba(10,15,26,0) 55%),
+    radial-gradient(900px 520px at -6% 0%, rgba(56,189,248,.08) 0%, rgba(10,15,26,0) 48%),
+    #0A0F18;
   color: var(--ink);
 }
 .block-container { max-width:1220px; padding-top:1.4rem; padding-bottom:3rem; }
 
-/* ---- hide Streamlit chrome ---- */
+/* ---- hide Streamlit chrome (but KEEP the sidebar collapse/expand control) ---- */
 [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"],
-#MainMenu, footer, [data-testid="stHeader"] { display:none !important; }
+#MainMenu, footer { display:none !important; }
+[data-testid="stHeader"] { background:transparent !important; height:0 !important; }
+/* the ">>" reopen control lives in the header — keep it visible & on top */
+[data-testid="stSidebarCollapsedControl"] { display:flex !important; z-index:1000; top:.6rem; }
+[data-testid="stSidebarCollapsedControl"] button { background:rgba(45,212,191,.14);
+  border:1px solid rgba(45,212,191,.4); border-radius:10px; color:#5EEAD4; }
 
 /* ---- typography ---- */
 h1,h2,h3 { font-family:'Space Grotesk','Inter',sans-serif; letter-spacing:-.02em;
@@ -74,8 +80,8 @@ a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:under
 }
 [data-testid="stSidebarNav"] a:hover { background:rgba(255,255,255,.05); text-decoration:none; }
 [data-testid="stSidebarNav"] a[aria-current="page"] {
-  background:linear-gradient(90deg,rgba(34,211,238,.16),rgba(99,102,241,.12));
-  box-shadow:inset 0 0 0 1px rgba(34,211,238,.35);
+  background:linear-gradient(90deg,rgba(45,212,191,.16),rgba(56,189,248,.12));
+  box-shadow:inset 0 0 0 1px rgba(45,212,191,.35);
 }
 [data-testid="stSidebarNav"] a span { color:var(--ink) !important; font-weight:500; }
 
@@ -86,12 +92,12 @@ a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:under
   padding:.5rem 1rem;
 }
 .stButton > button:hover, .stDownloadButton > button:hover {
-  background:rgba(255,255,255,.08); border-color:rgba(34,211,238,.5);
+  background:rgba(255,255,255,.08); border-color:rgba(45,212,191,.5);
   transform:translateY(-1px); color:var(--ink);
 }
 .stButton > button[kind="primary"], .stButton > button[data-testid="stBaseButton-primary"] {
-  background:linear-gradient(135deg,#22D3EE 0%,#6366F1 100%); border:0; color:#06121c;
-  box-shadow:0 6px 18px -6px rgba(34,211,238,.6);
+  background:linear-gradient(135deg,#2DD4BF 0%,#38BDF8 100%); border:0; color:#06121c;
+  box-shadow:0 6px 18px -6px rgba(45,212,191,.6);
 }
 .stButton > button[kind="primary"]:hover { filter:brightness(1.06); transform:translateY(-1px); }
 
@@ -102,7 +108,7 @@ a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:under
   transition:border-color .18s ease, transform .18s ease;
 }
 [data-testid="stVerticalBlockBorderWrapper"]:hover {
-  border-color:rgba(34,211,238,.35) !important; transform:translateY(-2px);
+  border-color:rgba(45,212,191,.35) !important; transform:translateY(-2px);
 }
 
 /* ---- inputs ---- */
@@ -112,7 +118,7 @@ a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:under
   border-radius:11px !important; color:var(--ink) !important;
 }
 .stTextInput input:focus, .stTextArea textarea:focus {
-  border-color:var(--accent) !important; box-shadow:0 0 0 3px rgba(34,211,238,.15) !important;
+  border-color:var(--accent) !important; box-shadow:0 0 0 3px rgba(45,212,191,.15) !important;
 }
 
 /* ---- metrics ---- */
@@ -129,7 +135,7 @@ a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:under
   background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:10px;
   padding:5px 12px; transition:all .15s ease;
 }
-.stRadio [role="radiogroup"] label:hover { border-color:rgba(34,211,238,.4); }
+.stRadio [role="radiogroup"] label:hover { border-color:rgba(45,212,191,.4); }
 
 /* ---- chat ---- */
 [data-testid="stChatMessage"] {
@@ -146,12 +152,23 @@ a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:under
 /* ---- RadQuant components ---- */
 .rq-top { display:flex; align-items:center; justify-content:space-between; gap:16px;
   padding:16px 20px; margin-bottom:16px; border-radius:18px;
-  background:linear-gradient(120deg,rgba(34,211,238,.10),rgba(99,102,241,.08));
+  background:linear-gradient(120deg,rgba(45,212,191,.10),rgba(56,189,248,.08));
   border:1px solid var(--line);
   box-shadow:0 18px 40px -28px rgba(0,0,0,.9); }
+.rq-brandwrap { display:flex; align-items:center; gap:12px; }
+.rq-logo { width:42px; height:42px; border-radius:12px; display:flex; align-items:center;
+  justify-content:center; font-size:1.4rem;
+  background:linear-gradient(135deg,rgba(45,212,191,.22),rgba(56,189,248,.18));
+  border:1px solid rgba(45,212,191,.35); box-shadow:0 6px 18px -8px rgba(45,212,191,.6); }
+.rq-ecgwrap { flex:1; height:40px; margin:0 22px; opacity:.7;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent);
+          mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent); }
+.rq-ecg { width:100%; height:40px; }
+.rq-ecg path { stroke-dasharray:520; stroke-dashoffset:520; animation:rq-trace 3.4s linear infinite; }
+@keyframes rq-trace { to { stroke-dashoffset:0; } }
 .rq-brand { font-family:'Space Grotesk',sans-serif; font-size:1.5rem; font-weight:700;
   letter-spacing:-.02em; color:var(--ink); line-height:1; }
-.rq-brand b { background:linear-gradient(135deg,#22D3EE,#818CF8);
+.rq-brand b { background:linear-gradient(135deg,#2DD4BF,#38BDF8);
   -webkit-background-clip:text; background-clip:text; color:transparent; }
 .rq-tag { color:var(--muted); font-size:.8rem; margin-top:4px; }
 .rq-pillbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
@@ -178,17 +195,29 @@ def inject_css() -> None:
     st.markdown(_CSS, unsafe_allow_html=True)
 
 
+_ECG = (
+    '<svg class="rq-ecg" viewBox="0 0 240 40" preserveAspectRatio="none">'
+    '<path d="M0 20 L40 20 L52 20 L60 6 L70 34 L80 12 L88 20 L120 20 L150 20 '
+    'L160 9 L170 31 L180 20 L240 20" fill="none" stroke="#2DD4BF" '
+    'stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>'
+)
+
+
 def app_header(active: str = "") -> None:
     st.markdown(
         f"""<div class="rq-top">
-          <div>
-            <div class="rq-brand">Rad<b>Quant</b></div>
-            <div class="rq-tag">Quantified triage &amp; reporting for chest radiography</div>
+          <div class="rq-brandwrap">
+            <div class="rq-logo">🫁</div>
+            <div>
+              <div class="rq-brand">Rad<b>Quant</b></div>
+              <div class="rq-tag">Chest-radiography triage &amp; reporting workstation</div>
+            </div>
           </div>
+          <div class="rq-ecgwrap">{_ECG}</div>
           <div class="rq-pillbar">
             <span class="rq-pill" style="background:rgba(52,211,153,.12);color:#34D399;">
               <span class="rq-dot"></span>LIVE</span>
-            <span class="rq-pill" style="background:rgba(34,211,238,.14);color:{ACCENT};">{html.escape(active)}</span>
+            <span class="rq-pill" style="background:rgba(45,212,191,.14);color:{ACCENT};">{html.escape(active)}</span>
             <span class="rq-pill" style="background:rgba(248,113,113,.14);color:#FCA5A5;">RESEARCH USE ONLY</span>
           </div>
         </div>""",
