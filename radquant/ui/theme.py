@@ -50,16 +50,21 @@ html, body, .stApp, [class*="css"] { font-family:'Inter',system-ui,sans-serif; }
 }
 .block-container { max-width:1220px; padding-top:1.4rem; padding-bottom:3rem; }
 
-/* ---- hide only the top-right menu/clutter; DO NOT touch the header geometry or
-       the sidebar collapse/expand control (that broke the reopen button) ---- */
-[data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"],
-#MainMenu, footer { display:none !important; }
+/* ---- hide ONLY the Deploy/menu actions — never the toolbar/header container,
+       which also holds the sidebar EXPAND button (that was the bug) ---- */
+[data-testid="stToolbarActions"], [data-testid="stMainMenu"],
+[data-testid="stDecoration"], [data-testid="stStatusWidget"], #MainMenu, footer {
+  display:none !important;
+}
 [data-testid="stHeader"] { background:transparent !important; }
-/* style (never hide) the expand-sidebar control across Streamlit versions */
-[data-testid="stSidebarCollapsedControl"] button,
+/* ALWAYS show + style the expand-sidebar control (so a collapsed sidebar can return) */
+[data-testid="stExpandSidebarButton"] {
+  display:inline-flex !important; visibility:visible !important; opacity:1 !important;
+  z-index:1000 !important;
+}
 [data-testid="stExpandSidebarButton"] button,
 [data-testid="stSidebarCollapseButton"] button {
-  background:rgba(45,212,191,.14) !important; border:1px solid rgba(45,212,191,.4) !important;
+  background:rgba(45,212,191,.16) !important; border:1px solid rgba(45,212,191,.45) !important;
   border-radius:10px !important; color:#5EEAD4 !important;
 }
 
