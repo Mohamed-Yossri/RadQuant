@@ -1,4 +1,4 @@
-"""RadQuant — a workflow-focused extension of MedRAX.
+"""RadQuant — a privacy-first, locally-deployable AI workstation for chest X-rays.
 
 See PLAN.md for the full architecture. Public submodules:
   - radquant.state   : the CaseState TypedDict shared across LangGraph nodes

@@ -9,6 +9,10 @@ font = "sans serif"
 [server]
 headless = true
 runOnSave = true
+# Allow the app to be embedded behind the Lightning studio proxy/iframe.
+enableCORS = false
+enableXsrfProtection = false
+enableWebsocketCompression = false
 
 [browser]
 gatherUsageStats = false

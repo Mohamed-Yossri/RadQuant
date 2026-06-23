@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "radquant"
 version = "0.1.0"
-description = "RadQuant — a workflow-focused, locally-deployable extension of MedRAX for chest X-ray interpretation."
+description = "RadQuant — a privacy-first, locally-deployable AI workstation for chest X-ray interpretation."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }

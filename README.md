@@ -14,8 +14,8 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
-[![Built on MedRAX](https://img.shields.io/badge/built%20on-MedRAX-orange.svg)](https://github.com/bowang-lab/MedRAX)
 [![MedGemma](https://img.shields.io/badge/VLM-MedGemma%201.5%204B-4285F4.svg)](https://huggingface.co/google/medgemma-1.5-4b-it)
+[![Local](https://img.shields.io/badge/inference-100%25%20local-34D399.svg)](#-why-radquant)
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg)](https://streamlit.io)
 
 </div>
@@ -31,7 +31,7 @@
 
 - [Why RadQuant](#-why-radquant)
 - [Key Results](#-key-results)
-- [Features — Four Radiologist Workflows](#-features--four-radiologist-workflows)
+- [Features](#-features)
 - [Architecture](#-architecture)
 - [Tech Stack](#-tech-stack)
 - [Repository Structure](#-repository-structure)
@@ -107,7 +107,7 @@ RadQuant's signature contribution: **uncertainty-aware abstention**. On the case
 
 ---
 
-## 🏥 Features — Four Radiologist Workflows
+## 🏥 Features
 
 | # | Workflow | Description | Technology |
 |:---:|---|---|---|
@@ -147,7 +147,8 @@ flowchart LR
 - **Human-in-the-loop interrupt** before the `review` node — no report is ever finalized without radiologist approval
 - **Two-stage omission QC** — lexical synonym matching (fast, deterministic) → LLM judge fallback (catches novel phrasings)
 - **Singleton model loading** — MedGemma (~8 GB) is loaded once and shared across all nodes via a thread-safe singleton
-- **Orchestration on free APIs** — agent meta-reasoning uses Groq/NVIDIA NIM open LLMs; the medical path is fully local
+- **Fully-local medical path** — triage, drafting, QC, the explainer, classification, localization and segmentation run entirely on-device. The **only** external call is the optional interactive assistant's tool-orchestration, which uses a free open LLM via NVIDIA NIM (`Llama-3.3-70B`; Groq `gpt-oss-120b` also supported). No patient image ever leaves the machine.
+- **Beyond the core graph** — finding **localization** (boxes), anatomy **segmentation**, **selective prediction**, and the tool-using **assistant** sit alongside the pipeline above.
 
 ---
 
@@ -157,9 +158,11 @@ flowchart LR
 |---|---|---|
 | **Medical VLM** | [MedGemma 1.5 4B](https://huggingface.co/google/medgemma-1.5-4b-it) | Gemma3 architecture, bf16 inference, ~8.7 GB VRAM, ~15.6 tok/s on L4 |
 | **CXR Classifier** | [TorchXRayVision](https://github.com/mlmed/torchxrayvision) | DenseNet-121, pretrained, 18 pathologies |
+| **Localization** | MedGemma-1.5-4B grounding fine-tune | Bounding-box findings on frontal CXRs + IoU-NMS |
+| **Segmentation** | TorchXRayVision ChestX-Det PSPNet | Lung-field + heart masks, cardiothoracic ratio |
 | **Explainability** | [pytorch-grad-cam](https://github.com/jacobgil/pytorch-grad-cam) | Grad-CAM heatmaps on classifier activations |
-| **Orchestration** | [LangGraph](https://langchain-ai.github.io/langgraph/) + [LangChain](https://www.langchain.com/) | State machine with conditional edges + human-in-the-loop |
-| **Orchestrator LLM** | Groq `gpt-oss-120b` / NVIDIA NIM `Llama-3.3-70B` | Free-tier, open-weights, OpenAI-compatible API |
+| **Orchestration** | [LangGraph](https://langchain-ai.github.io/langgraph/) + [LangChain](https://www.langchain.com/) | State machine + tool-using ReAct assistant |
+| **Orchestrator LLM** | NVIDIA NIM `Llama-3.3-70B` *(Groq `gpt-oss-120b` optional)* | Free-tier, open-weights, OpenAI-compatible; **assistant/eval only — not the medical path** |
 | **DICOM** | [pydicom](https://pydicom.github.io/) | DICOM → PNG conversion + metadata extraction |
 | **UI Framework** | [Streamlit](https://streamlit.io) | Multi-page app with custom dark theme |
 | **Compute** | NVIDIA L4 (24 GB) | Single GPU, CUDA 12.8, Lightning.ai studio |
@@ -261,7 +264,7 @@ RadQuant/
 - **GPU**: NVIDIA T4 (16 GB) or L4 (24 GB) — tested on Lightning.ai
 - **Python**: 3.10+
 - **CUDA**: 12.x with PyTorch pre-installed
-- **Accounts**: HuggingFace (free), Groq (free tier)
+- **Accounts**: HuggingFace (free; required for weights) + NVIDIA NIM or Groq (free tier; for the assistant/eval only)
 
 ### 1. Clone & Setup
 
@@ -276,9 +279,11 @@ Set these as environment variables or in a `.env` file (see `.env.example`):
 
 | Variable | Source | Purpose |
 |---|---|---|
-| `HF_TOKEN` | [HuggingFace tokens](https://huggingface.co/settings/tokens) | Download MedGemma weights |
-| `GROQ_TOKEN` | [Groq console](https://console.groq.com) | Orchestrator LLM |
-| `NVIDIA_KEY` *(optional)* | [NVIDIA NIM](https://build.nvidia.com/) | Eval backend (higher rate limits) |
+| `HF_TOKEN` | [HuggingFace tokens](https://huggingface.co/settings/tokens) | Download MedGemma weights (required) |
+| `NVIDIA_KEY` | [NVIDIA NIM](https://build.nvidia.com/) | Orchestrator for the interactive assistant + eval |
+| `GROQ_TOKEN` *(optional)* | [Groq console](https://console.groq.com) | Alternative orchestrator backend |
+
+> The **medical path runs fully local** and needs only `HF_TOKEN`. An orchestrator key (`NVIDIA_KEY`, or `GROQ_TOKEN`) is only needed for the optional tool-using **assistant** and the benchmark eval.
 
 > [!IMPORTANT]
 > **One-time step**: Accept the MedGemma license at [huggingface.co/google/medgemma-1.5-4b-it](https://huggingface.co/google/medgemma-1.5-4b-it) — approval is automatic.
@@ -437,23 +442,25 @@ We believe in honest reporting. These are real limitations, not fine print:
 
 ---
 
-## 🏆 Contributions Over MedRAX
+## 🏆 How RadQuant Compares
 
-| Dimension | MedRAX | RadQuant |
+We benchmark against **MedRAX** (the current state of the art on ChestAgentBench) as the reference point — it pairs a GPT-4o backbone with a 7-tool agent. RadQuant takes a deliberately different posture: **on-device, open-weights, workflow-first**, with a safety layer the cloud systems don't ship.
+
+| Dimension | Cloud SOTA (MedRAX / GPT-4o) | RadQuant |
 |---|---|---|
-| **Medical backbone** | GPT-4o (proprietary, cloud) | MedGemma-4B (open, local) |
-| **API cost** | Per-call billing | $0 |
-| **Patient data** | Leaves the hospital | Stays on-premise |
-| **Interface** | Single-image research chat | Multi-case worklist workflow |
-| **Safety** | None | Omission QC + selective prediction |
-| **Uncertainty** | None | Calibrated abstention (66.7% at 70% coverage) |
-| **Evaluation** | Full benchmark | 500-question subset, honest comparison |
+| **Medical backbone** | GPT-4o (proprietary, cloud) | MedGemma-1.5-4B (open, local) |
+| **API cost** | Per-call billing | $0 (medical path) |
+| **Patient data** | Sent to a cloud API | Never leaves the machine |
+| **Interface** | Single-image research chat | Multi-case worklist + tool-using assistant |
+| **Localization** | — | Bounding-box findings + anatomy segmentation |
+| **Safety / uncertainty** | — | Omission QC + selective prediction (66.7% @ 70% coverage) |
+| **Accuracy (ChestAgentBench)** | 63.1% (MedRAX) / 56.4% (GPT-4o, single model) | 57.6% single-model — *beats GPT-4o head-to-head* |
 
 ---
 
 ## 📚 Attribution & References
 
-This project builds directly on **MedRAX** and must be cited prominently.
+RadQuant uses **ChestAgentBench** for evaluation and reuses a small Apache-2.0 orchestration scaffold from **MedRAX** (see [License](#-license)); MedRAX is also our SOTA benchmark reference. Please cite the sources below.
 
 ### Papers
 
@@ -488,6 +495,6 @@ Medical models carry their own licenses:
 
 **Built with ❤️ for safer, more accessible radiology AI**
 
-*If you find this work useful, please ⭐ the repository and cite MedRAX.*
+*If you find this work useful, please ⭐ the repository and cite the references above.*
 
 </div>
