@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from radquant.ui import theme, worklist, case_view, explainer, settings
+from radquant.ui import theme, worklist, case_view, explainer, settings, insights_graph
 
 
 def main() -> None:
@@ -20,6 +20,8 @@ def main() -> None:
                             url_path="worklist", default=True),
         "case": st.Page(case_view.page, title="Case", icon=":material/clinical_notes:",
                         url_path="case"),
+        "insights": st.Page(insights_graph.page, title="Insights Graph",
+                            icon=":material/hub:", url_path="insights"),
         "explainer": st.Page(explainer.page, title="Explainer", icon=":material/translate:",
                              url_path="explainer"),
         "settings": st.Page(settings.page, title="Settings", icon=":material/settings:",
