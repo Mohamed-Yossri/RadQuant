@@ -34,8 +34,9 @@ def test_c_effusion_synonym_is_not_flagged():
 
 def test_threshold_excludes_low_confidence():
     report = "Lungs clear."
-    # 0.7 is not > 0.7, so it must be ignored entirely (judge never consulted).
-    oms = find_omissions(report, {"Pneumothorax": 0.70}, judge=JUDGE_NO)
+    # Pneumothorax per-pathology QC threshold is 0.30. A score of 0.25 is
+    # below it and must be silently ignored (judge never consulted).
+    oms = find_omissions(report, {"Pneumothorax": 0.25}, judge=JUDGE_NO)
     assert oms == []
 
 
@@ -49,3 +50,17 @@ def test_multiple_findings_sorted_by_confidence():
     report = "Lungs clear."
     oms = find_omissions(report, {"Mass": 0.75, "Pneumonia": 0.95}, judge=JUDGE_NO)
     assert [o["finding"] for o in oms] == ["Pneumonia", "Mass"]  # highest first
+
+
+def test_negation_is_treated_as_addressed():
+    """'No pneumothorax' in the report should count as addressed (negation-aware)."""
+    report = "The lungs are clear. No pneumothorax identified. No effusion."
+    oms = find_omissions(report, {"Pneumothorax": 0.85}, judge=JUDGE_NO)
+    assert oms == [], f"negation not recognised: {oms}"
+
+
+def test_negation_suffix_is_treated_as_addressed():
+    """'Pneumothorax not identified' (suffix negation) should count as addressed."""
+    report = "FINDINGS: Pneumothorax not identified. Mild cardiomegaly."
+    oms = find_omissions(report, {"Pneumothorax": 0.85}, judge=JUDGE_NO)
+    assert oms == [], f"suffix negation not recognised: {oms}"

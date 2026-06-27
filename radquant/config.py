@@ -28,13 +28,14 @@ def _load_dotenv() -> None:
     """Best-effort load of .env / .env.runtime WITHOUT overriding real env vars.
 
     Live environment (Lightning secrets) always wins over file contents.
+    Handles Windows-style CRLF line endings transparently.
     """
     for name in (".env", ".env.runtime"):
         path = ROOT / name
         if not path.exists():
             continue
-        for line in path.read_text().splitlines():
-            line = line.strip()
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip().rstrip("\r")  # handle CRLF on Windows
             if not line or line.startswith("#") or "=" not in line:
                 continue
             key, _, val = line.partition("=")
@@ -64,3 +65,23 @@ def quant() -> str:
     defaulting to bf16 if unset."""
     _load_dotenv()
     return os.environ.get("RADQUANT_QUANT", "bf16")
+
+
+def device() -> str:
+    """Auto-detect the best available compute device.
+
+    Returns 'cuda' if an NVIDIA GPU is available, otherwise 'cpu'.
+    Respects RADQUANT_DEVICE env var if explicitly set to override.
+    """
+    _load_dotenv()
+    explicit = os.environ.get("RADQUANT_DEVICE")
+    if explicit:
+        return explicit
+
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return "cuda"
+    except ImportError:
+        pass
+    return "cpu"

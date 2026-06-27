@@ -74,5 +74,25 @@ dist/
 *.log
 
 # ---------- Misc ----------
-main.py
+# stray root-level scratch file only — anchored so it never matches backend/main.py
+/main.py
 radquant.egg-info/
+
+# ---------- Added per user request ----------
+temp_node/
+node_installer
+*.exe
+*.msi
+
+# ---------- Node & Next.js ----------
+node_modules/
+.next/
+out/
+build/
+.vercel/
+
+# ---------- OS & Misc ----------
+.DS_Store
+Thumbs.db
+backend/uploads/
+backend/temp/
