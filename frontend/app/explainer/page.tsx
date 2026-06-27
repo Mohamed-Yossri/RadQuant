@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { explainer as explApi, ExplainOut } from '@/lib/api';
-import { FileText, Sparkles, BookOpen, AlertTriangle } from 'lucide-react';
+import { FileText, Sparkles, BookOpen, AlertTriangle, Search } from 'lucide-react';
 
 const EXAMPLE = `EXAMINATION: CT abdomen/pelvis with contrast.
 FINDINGS: A 3.5 cm hypodense lesion in the right hepatic lobe, indeterminate. Mild splenomegaly. No retroperitoneal lymphadenopathy. Cholelithiasis without cholecystitis.
