@@ -1,0 +1,78 @@
+# ======================================
+# RadQuant .gitignore
+# ======================================
+
+# ---------- Secrets / runtime ----------
+.env
+.env.runtime
+
+# ---------- Data (large, downloaded) ----------
+/data/
+/external/
+
+# ---------- Runtime artifacts ----------
+/temp/
+/logs/
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg
+
+# ---------- Model / HF caches ----------
+*.safetensors
+*.bin
+
+# ---------- IDE ----------
+.idea/
+.vscode/
+.vscode-server
+.cursor-server
+.windsurf-server
+.copilot/
+
+# ---------- Lightning.ai studio dotfiles ----------
+# This repo root doubles as the studio HOME dir — never track its dotfiles.
+.cache/
+.claude/
+.claude.json
+.config/
+.dotnet/
+.ipython/
+.jupyter
+.lightning_studio/
+.nv/
+.npm/
+.nvm/
+.oh-my-zsh/
+.local/
+.ssh/
+.torchxrayvision/
+.antigravity-ide-server/
+.gemini/
+
+# ---------- Shell / system ----------
+.bash_history
+.zsh_history
+.zcompdump*
+.zshrc
+.bashrc
+.profile
+.condarc
+.gitconfig
+.hushlogin
+.sudo_as_admin_successful
+.vimrc
+.wget-hsts
+.docker
+*.log
+
+# ---------- Misc ----------
+main.py
+radquant.egg-info/

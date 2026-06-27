@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "radquant"
+version = "0.1.0"
+description = "RadQuant — a privacy-first, locally-deployable AI workstation for chest X-ray interpretation."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+
+# NOTE: torch and torchvision are intentionally NOT listed here.
+# The Lightning.ai studio ships them pre-installed with a CUDA build
+# (torch 2.8.0+cu128 / torchvision 0.23.0+cu128). Declaring them would let
+# pip resolve a CPU-only wheel and silently break GPU inference.
+dependencies = [
+    "transformers>=4.57.1",          # MedGemma 1.5 4B is a Gemma3 arch (needs >=4.57.1)
+    "accelerate>=0.34",
+    "huggingface-hub>=0.25",
+    "langgraph>=0.2",
+    "langchain>=0.3",
+    "langchain-openai>=0.2",
+    "openai>=1.40",                  # Groq via OpenAI-compatible client
+    "torchxrayvision>=1.2",
+    "grad-cam>=1.5",                 # import name: pytorch_grad_cam
+    "pydicom>=2.4",
+    "SimpleITK>=2.3",
+    "Pillow>=10.0",
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scikit-image>=0.21",            # torchxrayvision dependency, pinned explicitly
+    "streamlit>=1.36",
+    "python-dotenv>=1.0",
+    "datasets>=2.20",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+# Only needed on <=16 GB GPUs (e.g. T4) for 4-bit quantization.
+# The L4 (24 GB) bf16 path does not require this.
+quant = ["bitsandbytes>=0.43"]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["radquant*"]
+exclude = ["external*", "data*", "tests*", "scripts*"]
