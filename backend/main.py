@@ -23,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from backend.deps import get_worklist
-from backend.routers import cases, explain, general, insights, qc, worklist
+from backend.routers import cases, ct, explain, general, insights, qc, worklist
 from radquant.config import DATA_DIR
 
 app = FastAPI(
@@ -48,6 +48,7 @@ app.include_router(qc.router)
 app.include_router(explain.router)
 app.include_router(insights.router)
 app.include_router(general.router)
+app.include_router(ct.router)
 
 
 @app.get("/api/health", tags=["meta"])

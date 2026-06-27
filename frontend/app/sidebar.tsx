@@ -10,12 +10,14 @@ import {
   FileText,
   Network,
   Brain,
+  Boxes,
 } from 'lucide-react';
 
 const NAV = [
   { href: '/worklist', icon: LayoutDashboard, label: 'Worklist' },
   { href: '/case', icon: Stethoscope, label: 'Active Case' },
   { href: '/insights', icon: Network, label: 'Insights Graph' },
+  { href: '/ct', icon: Boxes, label: 'CT Reader' },
   { href: '/general', icon: Brain, label: 'General Medical' },
   { href: '/explainer', icon: FileText, label: 'Patient Explainer' },
   { href: '/settings', icon: Settings, label: 'System Settings' },

@@ -239,6 +239,26 @@ export const general = {
     }),
 };
 
+// ── CT Reader (TotalSegmentator) ──────────────────────────────────────────────
+
+export interface CtVolume { name: string; ml: number; }
+export interface CtSlice { orig: string; overlay: string; }
+export interface CtAnalyzeOut {
+  study_id: string;
+  n_slices: number;
+  slices: CtSlice[];
+  volumes: CtVolume[];
+  report: string;
+}
+
+export const ct = {
+  analyze: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api<CtAnalyzeOut>('/ct/analyze', { method: 'POST', body: form });
+  },
+};
+
 // ── Urgency helpers ───────────────────────────────────────────────────────────
 
 export function urgencyColor(score: number): string {

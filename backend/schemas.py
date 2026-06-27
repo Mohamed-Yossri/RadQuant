@@ -178,3 +178,23 @@ class GeneralSegmentOut(BaseModel):
     short_axis_px: float
     image_w: int
     image_h: int
+
+
+# ── CT Reader (TotalSegmentator) ──────────────────────────────────────────────
+
+class CtVolume(BaseModel):
+    name: str
+    ml: float
+
+
+class CtSlice(BaseModel):
+    orig: str
+    overlay: str
+
+
+class CtAnalyzeOut(BaseModel):
+    study_id: str
+    n_slices: int
+    slices: List[CtSlice]
+    volumes: List[CtVolume]
+    report: str
