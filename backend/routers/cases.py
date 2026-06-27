@@ -38,7 +38,7 @@ async def _stream_draft(image_path: str, findings: dict) -> AsyncGenerator[str, 
     def _sse(event: str, data: dict) -> str:
         return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
-    yield _sse("progress", {"step": "classifying", "message": "Running ensemble classifier…"})
+    yield _sse("progress", {"step": "classifying", "message": "Running classifier…"})
     await asyncio.sleep(0)   # yield to event loop
 
     yield _sse("progress", {"step": "drafting", "message": "MedGemma drafting report…"})
@@ -59,9 +59,13 @@ def _run_draft(image_path: str, findings: dict):
     return draft_report(image_path, findings)
 
 
-@router.post("/{case_id}/draft")
+@router.get("/{case_id}/draft")
 async def stream_draft(case_id: str, wl=Depends(get_worklist)):
-    """SSE endpoint: streams progress then the completed draft."""
+    """SSE endpoint: streams progress then the completed draft.
+
+    Served over GET because the browser ``EventSource`` API (used by the
+    frontend) only issues GET requests.
+    """
     case = _require_case(case_id, wl)
     findings = case.findings
     if not findings:
