@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { cases as casesApi, worklist as wlApi, CaseOut, OmissionItem,
          LocalizationFinding, urgencyColor, urgencyLabel, tierColor, caseImageUrl } from '@/lib/api';
 import { ArrowLeft, Cpu, Focus, Search, ShieldAlert, CheckCircle, Brain, Send, Flame, Zap, Layers, FileText } from 'lucide-react';
@@ -10,6 +10,7 @@ type ViewMode = 'original' | 'gradcam' | 'grounding' | 'segmentation';
 
 export default function CasePage() {
   const params = useParams();
+  const router = useRouter();
   const caseId = params.id as string;
 
   const [caseData, setCaseData] = useState<CaseOut | null>(null);
@@ -35,8 +36,19 @@ export default function CasePage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    wlApi.getCase(caseId).then(setCaseData).catch(console.error);
-  }, [caseId]);
+    wlApi
+      .getCase(caseId)
+      .then((c) => {
+        setCaseData(c);
+        // remember this as the "active case" for the sidebar tab
+        if (typeof window !== 'undefined') localStorage.setItem('radquant:lastCase', caseId);
+      })
+      .catch(() => {
+        // stale/deleted id (e.g. worklist was cleared) — forget it and bail out
+        if (typeof window !== 'undefined') localStorage.removeItem('radquant:lastCase');
+        router.replace('/worklist');
+      });
+  }, [caseId, router]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
