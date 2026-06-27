@@ -99,10 +99,13 @@ export interface InsightsGraphData {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-    ...init,
-  });
+  // Never force a JSON content-type on FormData uploads — the browser must set
+  // the multipart boundary itself, or the backend can't parse the file.
+  const isForm = typeof FormData !== 'undefined' && init?.body instanceof FormData;
+  const headers = isForm
+    ? { ...init?.headers }
+    : { 'Content-Type': 'application/json', ...init?.headers };
+  const res = await fetch(`${BASE}${path}`, { ...init, headers });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`API ${path} → ${res.status}: ${text}`);

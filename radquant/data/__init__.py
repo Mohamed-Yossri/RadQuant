@@ -18,7 +18,33 @@ from radquant.config import DATA_DIR
 
 CHESTAGENTBENCH_DIR = DATA_DIR / "chestagentbench"
 MANIFEST_PATH = CHESTAGENTBENCH_DIR / "manifest.json"
+DEMO_CXR_DIR = DATA_DIR / "demo_cxr"
 _IMAGE_EXTS = {".png", ".jpg", ".jpeg"}
+
+
+def demo_cxr(n: int | None = 8) -> list[Path]:
+    """Return real *frontal chest X-rays* bundled for the demo worklist.
+
+    Unlike :func:`sample` (which returns ChestAgentBench *figures* — CT/MRI/
+    histology/annotated panels meant for the multiple-choice VQA eval, and which
+    are out-of-distribution for the CXR classifier), these are actual chest
+    radiographs (normal + pneumonia). Use this to seed the worklist so the
+    classifier / Grad-CAM / triage operate on the modality they were built for.
+
+    Returns a clinically mixed order (normals first, then pneumonia, then the
+    bundled author examples) so a seeded worklist shows a meaningful spread.
+    """
+    if not DEMO_CXR_DIR.exists():
+        return []
+    imgs = [p for p in DEMO_CXR_DIR.rglob("*") if p.suffix.lower() in _IMAGE_EXTS]
+
+    def rank(p: Path) -> tuple[int, str]:
+        name = p.name.lower()
+        bucket = 0 if name.startswith("normal") else 1 if name.startswith("pneumonia") else 2
+        return (bucket, str(p))
+
+    ordered = sorted(imgs, key=rank)
+    return ordered[:n] if n else ordered
 
 
 def load_manifest() -> Optional[dict]:

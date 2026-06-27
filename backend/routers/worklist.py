@@ -74,11 +74,16 @@ async def upload_image(
 
 @router.post("/seed-demo", response_model=WorklistOut)
 async def seed_demo(n: int = 8, wl=Depends(get_worklist)):
-    """Seed worklist from built-in sample images."""
-    from radquant.data import sample
+    """Seed the worklist from the bundled real frontal chest X-rays.
+
+    Uses ``data.demo_cxr`` (actual CXRs the classifier was trained on), NOT
+    ``data.sample`` (ChestAgentBench figures — CT/MRI/histology — which are
+    out-of-distribution for the CXR classifier and only meant for the VQA eval).
+    """
+    from radquant.data import demo_cxr
     from radquant.nodes.classify import classify_image
 
-    paths = sample(n)
+    paths = demo_cxr(n)
     for i, p in enumerate(paths):
         findings = classify_image(str(p))
         wl.add_from_findings(f"demo-{i:02d}", str(p), findings)
