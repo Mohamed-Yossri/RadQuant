@@ -27,6 +27,7 @@ export default function SettingsPage() {
           <Row icon={ScanLine} label="Classifier" value="TorchXRayVision DenseNet-121 (densenet121-res224-all)" />
           <Row icon={Server} label="Orchestrator LLM" value="NVIDIA NIM · meta/llama-3.3-70b-instruct (Groq gpt-oss-120b optional)" />
           <Row icon={Crosshair} label="Grounding Model" value="alex-feeel/medgemma-cxr-auditor-v2" />
+          <Row icon={ScanLine} label="Segmentation (general)" value="MedSAM ViT-B (flaviagiammarino/medsam-vit-base) — box-prompted, any modality" />
         </Section>
 
         <Section title="Inference" icon={Gauge}>

@@ -208,6 +208,16 @@ export interface GeneralAnalyzeOut {
   description: string;
 }
 
+export interface GeneralSegmentOut {
+  overlay_url: string;
+  area_px: number;
+  area_pct: number;
+  width_px: number;
+  height_px: number;
+  image_w: number;
+  image_h: number;
+}
+
 export const general = {
   analyze: (file: File) => {
     const form = new FormData();
@@ -218,6 +228,11 @@ export const general = {
     api<{ answer: string }>('/general/vqa', {
       method: 'POST',
       body: JSON.stringify({ image_id: imageId, question }),
+    }),
+  segment: (imageId: string, box: number[]) =>
+    api<GeneralSegmentOut>('/general/segment', {
+      method: 'POST',
+      body: JSON.stringify({ image_id: imageId, box }),
     }),
 };
 

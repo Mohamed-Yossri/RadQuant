@@ -160,3 +160,18 @@ class GeneralVQAIn(BaseModel):
 
 class GeneralVQAOut(BaseModel):
     answer: str
+
+
+class GeneralSegmentIn(BaseModel):
+    image_id: str
+    box: List[float]                   # [x0, y0, x1, y1] in image pixels
+
+
+class GeneralSegmentOut(BaseModel):
+    overlay_url: str
+    area_px: int
+    area_pct: float
+    width_px: int
+    height_px: int
+    image_w: int
+    image_h: int

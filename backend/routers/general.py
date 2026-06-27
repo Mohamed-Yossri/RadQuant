@@ -14,8 +14,16 @@ from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
+from pathlib import Path as _Path
+
 from backend.deps import UPLOAD_DIR
-from backend.schemas import GeneralAnalyzeOut, GeneralVQAIn, GeneralVQAOut
+from backend.schemas import (
+    GeneralAnalyzeOut,
+    GeneralSegmentIn,
+    GeneralSegmentOut,
+    GeneralVQAIn,
+    GeneralVQAOut,
+)
 
 router = APIRouter(prefix="/api/general", tags=["general"])
 
@@ -64,6 +72,20 @@ async def vqa(body: GeneralVQAIn):
     return GeneralVQAOut(answer=answer)
 
 
+@router.post("/segment", response_model=GeneralSegmentOut)
+async def segment(body: GeneralSegmentIn):
+    """MedSAM box-prompted segmentation of any structure in any modality."""
+    path = UPLOAD_DIR / body.image_id
+    if not path.is_file():
+        raise HTTPException(404, "Image not found — analyze it first.")
+    if len(body.box) != 4:
+        raise HTTPException(400, "box must be [x0, y0, x1, y1]")
+    loop = asyncio.get_event_loop()
+    overlay_path, stats = await loop.run_in_executor(None, _segment, str(path), body.box)
+    rel = _Path(overlay_path).name
+    return GeneralSegmentOut(overlay_url=f"/api/images/temp/{rel}", **stats)
+
+
 # Lazy imports so the heavy model only loads when these endpoints are hit.
 def _detect(p: str):
     from radquant.nodes.general import detect_modality
@@ -78,3 +100,8 @@ def _describe(p: str, m: str):
 def _vqa(p: str, q: str):
     from radquant.nodes.general import vqa
     return vqa(p, q)
+
+
+def _segment(p: str, box):
+    from radquant.models.medsam import segment_overlay
+    return segment_overlay(p, box)
