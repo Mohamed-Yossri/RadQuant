@@ -8,27 +8,34 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Deep clinical "reading room" navy — radiologists read on dark.
         surface: {
-          DEFAULT: '#0A0F1C', // Very deep navy
-          1: '#111827',       // Slate 900
-          2: '#1F2937',       // Slate 800
-          3: '#374151',       // Slate 700
-          4: '#4B5563',       // Slate 600
+          DEFAULT: '#070B14', // app background
+          1: '#0C1220',       // panels
+          2: '#121A2B',       // cards
+          3: '#1B2538',       // raised / hover
+          4: '#2A3650',       // strong divider
         },
+        // RadQuant brand duo — clinical teal + sky (the wordmark gradient).
         accent: {
-          teal: '#06B6D4',    // Cyan 500 (clinical scrub color)
-          sky: '#3B82F6',     // Blue 500 (medical uniform)
-          purple: '#8B5CF6',  // Violet 500
+          teal: '#2DD4BF',    // scrubs teal
+          sky: '#38BDF8',     // monitor blue
+          purple: '#8B5CF6',
         },
-        critical: '#EF4444',  // Red 500
-        urgent: '#F59E0B',    // Amber 500
-        important: '#EAB308', // Yellow 500
-        chronic: '#10B981',   // Emerald 500
-        border: '#1F2937',    // Slate 800
+        critical: '#F4536B',  // alarm red (softened from pure red)
+        urgent: '#F59E0B',    // amber
+        important: '#EAB308', // yellow
+        chronic: '#34D399',   // vital green ("healthy" / routine)
+        border: '#1B2740',    // hairline
       },
       fontFamily: {
         sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'JetBrains Mono', 'monospace'],
+      },
+      boxShadow: {
+        card: '0 1px 0 0 rgba(255,255,255,0.03) inset, 0 8px 24px -12px rgba(0,0,0,0.6)',
+        'card-hover': '0 1px 0 0 rgba(255,255,255,0.05) inset, 0 16px 40px -16px rgba(0,0,0,0.75)',
+        glow: '0 0 0 1px rgba(45,212,191,0.25), 0 10px 30px -8px rgba(45,212,191,0.35)',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

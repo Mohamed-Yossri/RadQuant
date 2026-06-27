@@ -8,7 +8,7 @@
 
 **A privacy-first, locally-deployable AI workstation for chest X-ray interpretation**
 
-*Matches GPT-4o accuracy on ChestAgentBench with a 4B open-weights model on a single GPU — at zero API cost, with no patient data leaving the building.*
+*The **product** is a **chest-X-ray reading workstation** — worklist triage, report drafting, omission QC, localization, segmentation and a patient explainer, all on-device. The reasoning **engine** behind it (MedGemma 1.5 4B) is **benchmarked at GPT-4o level on ChestAgentBench** — at zero API cost, with no patient data leaving the building.*
 
 <br>
 
@@ -16,7 +16,8 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![MedGemma](https://img.shields.io/badge/VLM-MedGemma%201.5%204B-4285F4.svg)](https://huggingface.co/google/medgemma-1.5-4b-it)
 [![Local](https://img.shields.io/badge/inference-100%25%20local-34D399.svg)](#-why-radquant)
-[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg)](https://streamlit.io)
+[![FastAPI](https://img.shields.io/badge/API-FastAPI-009688.svg)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/UI-Next.js%2014-000000.svg)](https://nextjs.org)
 
 </div>
 
@@ -79,6 +80,9 @@ State-of-the-art chest X-ray agents like **MedRAX** (ICML 2025) achieve their ac
 | CheXagent | 8B medical VLM | 39.5% | — |
 
 > **RadQuant beats GPT-4o head-to-head** (57.6% vs 56.4%) using a model that is **14× smaller**, runs on a **single consumer GPU**, and costs **$0 in API fees**.
+
+> [!NOTE]
+> **What this number measures.** ChestAgentBench is the multiple-choice reasoning benchmark from the MedRAX paper (chest case reports from Eurorad, whose figures span X-ray, CT and other modalities). It scores the **reasoning engine** — how well the model answers chest-imaging questions — *not* the workstation's triage/draft/QC features. The product is a chest-X-ray workstation; this benchmark is how we prove the open-weights engine inside it is competitive with GPT-4o. The two claims are kept deliberately separate.
 
 ### Selective Prediction — "The Quant"
 
@@ -164,7 +168,7 @@ flowchart LR
 | **Orchestration** | [LangGraph](https://langchain-ai.github.io/langgraph/) + [LangChain](https://www.langchain.com/) | State machine + tool-using ReAct assistant |
 | **Orchestrator LLM** | NVIDIA NIM `Llama-3.3-70B` *(Groq `gpt-oss-120b` optional)* | Free-tier, open-weights, OpenAI-compatible; **assistant/eval only — not the medical path** |
 | **DICOM** | [pydicom](https://pydicom.github.io/) | DICOM → PNG conversion + metadata extraction |
-| **UI Framework** | [Streamlit](https://streamlit.io) | Multi-page app with custom dark theme |
+| **Web app** | [Next.js 14](https://nextjs.org) + [Tailwind](https://tailwindcss.com) frontend · [FastAPI](https://fastapi.tiangolo.com) backend | Clinical dark-theme workstation UI *(a legacy Streamlit app also ships under `radquant/ui/`)* |
 | **Compute** | NVIDIA L4 (24 GB) | Single GPU, CUDA 12.8, Lightning.ai studio |
 | **Evaluation** | [ChestAgentBench](https://huggingface.co/datasets/wanglab/chest-agent-bench) | 2,500 MCQs across 7 clinical reasoning categories |
 
@@ -315,18 +319,31 @@ python scripts/smoke_test.py    # End-to-end stack validation
 
 ### Launch the Application
 
+The web app is a Next.js frontend (`:3000`) that proxies to a FastAPI backend (`:8000`):
+
 ```bash
-streamlit run radquant/ui/app.py
+# one command — boots backend + frontend + a public tunnel
+bash scripts/serve_web.sh
+
+# …or with Docker
+docker compose up
+
+# …or manually
+uvicorn backend.main:app --port 8000          # backend
+cd frontend && npm install && npm run dev      # frontend → http://localhost:3000
 ```
 
-The Streamlit app provides four pages:
+The workstation has five pages:
 
 | Page | What You Do |
 |---|---|
-| **📋 Worklist** | View all cases ranked by urgency. Click "Seed demo worklist" to ingest sample studies through the classify → triage pipeline. |
-| **🩺 Case View** | Select a case → generate draft report + Grad-CAM → edit findings → run omission QC → finalize. |
-| **🗣️ Explainer** | Paste any radiology report (any modality) → get a plain-language patient-friendly version with hover glossary. |
-| **⚙️ Settings** | View runtime info: GPU, VRAM, quantization, model endpoints, credential status. |
+| **📋 Worklist** | All cases ranked by urgency, with a thumbnail per study. "Seed Cases" ingests the bundled real chest X-rays through the classify → triage pipeline; "Upload Study" adds your own. |
+| **🩺 Active Case** | Open a case → generate draft report + Grad-CAM → localize / segment → edit findings → omission QC → finalize. Ask the tool-using assistant about the image. |
+| **🕸️ Insights Graph** | An Obsidian-style knowledge graph linking cases to the pathologies they share, with cohort signals. |
+| **🗣️ Patient Explainer** | Paste any radiology report (any modality) → plain-language patient version with hover glossary. |
+| **⚙️ System Settings** | Models, inference config, detection thresholds, and the product-vs-benchmark scope note. |
+
+*(A legacy Streamlit UI also ships: `streamlit run radquant/ui/app.py`.)*
 
 ### Run Benchmarks
 

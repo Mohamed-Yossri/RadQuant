@@ -206,8 +206,8 @@ export default function CasePage() {
               ))}
             </div>
             
-            {/* Image Canvas */}
-            <div className="relative flex-1 bg-black overflow-hidden flex items-center justify-center">
+            {/* Image Canvas — clinical film viewbox */}
+            <div className="relative flex-1 film overflow-hidden flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={viewMode === 'original' ? imgSrc : (overlays[viewMode] || imgSrc)}

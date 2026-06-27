@@ -1,25 +1,41 @@
+import { Cpu, ScanLine, Bot, Crosshair, Gauge, Server, ShieldAlert, Info } from 'lucide-react';
+
 export default function SettingsPage() {
   return (
-    <div className="p-6 max-w-3xl mx-auto animate-fade-in">
-      <h1 className="text-2xl font-bold text-slate-100 mb-2">Settings</h1>
-      <p className="text-sm text-slate-500 mb-8">RadQuant configuration and system info.</p>
+    <div className="p-8 max-w-3xl mx-auto animate-fade-in">
+      <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight mb-1.5">System Settings</h1>
+      <p className="text-sm text-slate-500 mb-8">RadQuant configuration, models, and system info.</p>
+
+      {/* What RadQuant is — scope clarity */}
+      <div className="card p-5 mb-5 border-l-2 border-l-accent-teal">
+        <div className="flex items-center gap-2 mb-2">
+          <Info className="w-4 h-4 text-accent-teal" />
+          <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">What this is</span>
+        </div>
+        <p className="text-sm text-slate-400 leading-relaxed">
+          A <span className="text-slate-200 font-semibold">chest X-ray reading workstation</span> — triage,
+          report drafting, omission QC, localization, segmentation and a patient explainer, all running
+          locally. The reasoning engine (MedGemma 1.5 4B) is separately{' '}
+          <span className="text-slate-200 font-semibold">benchmarked on ChestAgentBench at 57.6%</span> (matching
+          GPT-4o), which measures the model&apos;s chest-case reasoning — not the workstation features themselves.
+        </p>
+      </div>
 
       <div className="space-y-4">
-        <Section title="Model">
-          <Row label="Vision-Language Model" value="MedGemma 1.5 4B (google/medgemma-1.5-4b-it)" />
-          <Row label="Classifier" value="TorchXRayVision DenseNet-121 Ensemble (all / chex / nih)" />
-          <Row label="Orchestrator LLM" value="Groq openai/gpt-oss-120b (via OpenAI-compatible API)" />
-          <Row label="Grounding Model" value="alex-feeel/medgemma-cxr-auditor-v2" />
+        <Section title="Models" icon={Cpu}>
+          <Row icon={Bot} label="Vision-Language Model" value="MedGemma 1.5 4B (google/medgemma-1.5-4b-it)" />
+          <Row icon={ScanLine} label="Classifier" value="TorchXRayVision DenseNet-121 (densenet121-res224-all)" />
+          <Row icon={Server} label="Orchestrator LLM" value="NVIDIA NIM · meta/llama-3.3-70b-instruct (Groq gpt-oss-120b optional)" />
+          <Row icon={Crosshair} label="Grounding Model" value="alex-feeel/medgemma-cxr-auditor-v2" />
         </Section>
 
-        <Section title="Inference Settings">
-          <Row label="Quantization" value="4-bit NF4 on ≤16GB GPU · bf16 on ≥24GB GPU" />
-          <Row label="Beam Width (MedGemma)" value="4 beams (improved coherence)" />
-          <Row label="Repetition Penalty" value="1.2" />
-          <Row label="Pan-and-Scan" value="Enabled (4 crops — improved fine-detail resolution)" />
+        <Section title="Inference" icon={Gauge}>
+          <Row label="Precision" value="bf16 on ≥24 GB GPU · 4-bit NF4 on ≤16 GB GPU" />
+          <Row label="Decoding" value="Greedy (deterministic) · concise chain-of-thought for the eval" />
+          <Row label="Device" value="Auto-detected (CUDA → CPU fallback)" />
         </Section>
 
-        <Section title="Detection Thresholds">
+        <Section title="Detection Thresholds" icon={ScanLine}>
           <div className="grid grid-cols-2 gap-x-8 gap-y-1">
             {[
               ['Pneumothorax', '0.35'], ['Pneumonia', '0.40'],
@@ -30,43 +46,59 @@ export default function SettingsPage() {
             ].map(([label, val]) => (
               <div key={label} className="flex justify-between text-sm py-0.5">
                 <span className="text-slate-400">{label}</span>
-                <span className="text-slate-300 font-mono">{val}</span>
+                <span className="text-slate-300 font-mono tabular">{val}</span>
               </div>
             ))}
           </div>
-          <p className="text-xs text-slate-600 mt-2">
+          <p className="text-xs text-slate-600 mt-3">
             Per-pathology thresholds — critical findings use lower values for higher sensitivity.
           </p>
         </Section>
 
-        <Section title="Backend">
+        <Section title="Backend" icon={Server}>
           <Row label="API" value="FastAPI · Uvicorn (port 8000)" />
           <Row label="Frontend" value="Next.js 14 · Tailwind CSS (port 3000)" />
-          <Row label="API docs" value={<a href="/api/docs" target="_blank" className="text-accent-sky hover:underline">/api/docs (Swagger)</a>} />
+          <Row
+            label="API docs"
+            value={
+              <a href="/api/docs" target="_blank" className="text-accent-sky hover:underline">
+                /api/docs (Swagger)
+              </a>
+            }
+          />
         </Section>
 
-        <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl px-4 py-3 text-xs text-yellow-400">
-          ⚠️ Research / assistive demo only — not a medical device. Not for clinical use without
-          site-level validation and regulatory review.
+        <div className="flex items-start gap-2.5 bg-urgent/5 border border-urgent/20 rounded-xl px-4 py-3 text-xs text-urgent/90">
+          <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>
+            Research / assistive demo only — not a medical device. Not for clinical use without
+            site-level validation and regulatory review.
+          </span>
         </div>
       </div>
     </div>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
   return (
-    <div className="bg-surface-2 border border-border rounded-xl p-5">
-      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">{title}</div>
+    <div className="card p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Icon className="w-4 h-4 text-slate-500" />
+        <div className="text-xs font-bold text-slate-300 uppercase tracking-wider">{title}</div>
+      </div>
       <div className="space-y-2">{children}</div>
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
+function Row({ icon: Icon, label, value }: { icon?: React.ElementType; label: string; value: React.ReactNode }) {
   return (
-    <div className="flex justify-between items-start text-sm py-0.5">
-      <span className="text-slate-400 shrink-0 mr-4">{label}</span>
+    <div className="flex justify-between items-start text-sm py-1 gap-4">
+      <span className="text-slate-400 shrink-0 flex items-center gap-2">
+        {Icon && <Icon className="w-3.5 h-3.5 text-slate-600" />}
+        {label}
+      </span>
       <span className="text-slate-200 text-right">{value}</span>
     </div>
   );

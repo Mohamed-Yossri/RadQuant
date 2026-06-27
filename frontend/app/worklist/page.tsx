@@ -1,8 +1,26 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { worklist as wlApi, CaseOut, WorklistOut, urgencyColor, urgencyLabel, tierColor } from '@/lib/api';
-import { UploadCloud, RefreshCw, Trash2, ChevronRight, Activity, AlertCircle } from 'lucide-react';
+import {
+  worklist as wlApi,
+  CaseOut,
+  WorklistOut,
+  urgencyColor,
+  urgencyLabel,
+  tierColor,
+  caseImageUrl,
+} from '@/lib/api';
+import {
+  UploadCloud,
+  RefreshCw,
+  Trash2,
+  ChevronRight,
+  Activity,
+  Layers,
+  Clock,
+  Gauge,
+  Cpu,
+} from 'lucide-react';
 
 export default function WorklistPage() {
   const [data, setData] = useState<WorklistOut | null>(null);
@@ -15,8 +33,7 @@ export default function WorklistPage() {
 
   const load = useCallback(async () => {
     try {
-      const d = await wlApi.list();
-      setData(d);
+      setData(await wlApi.list());
     } catch (e) {
       console.error(e);
     } finally {
@@ -24,11 +41,17 @@ export default function WorklistPage() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const seedDemo = async () => {
     setSeeding(true);
-    try { setData(await wlApi.seedDemo(8)); } finally { setSeeding(false); }
+    try {
+      setData(await wlApi.seedDemo(8));
+    } finally {
+      setSeeding(false);
+    }
   };
 
   const clearAll = async () => {
@@ -42,33 +65,34 @@ export default function WorklistPage() {
     if (!files || files.length === 0) return;
     setUploading(true);
     for (const f of Array.from(files)) {
-      try { await wlApi.upload(f); } catch (e) { console.error(e); }
+      try {
+        await wlApi.upload(f);
+      } catch (e) {
+        console.error(e);
+      }
     }
     await load();
     setUploading(false);
   };
 
-  const cases = (data?.cases ?? []).filter(c =>
-    filter === 'all' ? true : c.status === filter
-  );
+  const cases = (data?.cases ?? []).filter((c) => (filter === 'all' ? true : c.status === filter));
 
   return (
     <div className="p-8 max-w-7xl mx-auto animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-start justify-between mb-8 gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-slate-100 tracking-tight">Active Worklist</h1>
-          <p className="text-sm text-slate-500 mt-1 flex items-center gap-1.5">
-            <AlertCircle className="w-4 h-4 text-urgent" />
-            Urgency weights are literature-anchored defaults — not for clinical use.
+          <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight">Active Worklist</h1>
+          <p className="text-sm text-slate-500 mt-1.5">
+            Chest radiograph triage queue · ranked by urgency · classified on-device
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2.5">
           <button
             onClick={seedDemo}
             disabled={seeding}
             className="flex items-center gap-2 px-4 py-2.5 bg-surface-2 border border-border text-slate-300
-                       rounded-xl text-sm font-semibold hover:bg-surface-3 transition-colors disabled:opacity-50"
+                       rounded-xl text-sm font-semibold hover:bg-surface-3 hover:border-surface-4 transition-all disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${seeding ? 'animate-spin' : ''}`} />
             {seeding ? 'Generating…' : 'Seed Cases'}
@@ -76,8 +100,8 @@ export default function WorklistPage() {
           <button
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            className="flex items-center gap-2 px-5 py-2.5 bg-accent-sky text-surface-1 border border-accent-sky
-                       rounded-xl text-sm font-bold hover:bg-accent-teal hover:border-accent-teal shadow-lg shadow-accent-sky/20 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-surface-1
+                       bg-gradient-to-r from-accent-teal to-accent-sky shadow-glow hover:brightness-110 transition-all disabled:opacity-50"
           >
             <UploadCloud className={`w-4 h-4 ${uploading ? 'animate-bounce' : ''}`} />
             {uploading ? 'Uploading…' : 'Upload Study'}
@@ -90,37 +114,45 @@ export default function WorklistPage() {
             <Trash2 className="w-4 h-4" />
             Clear
           </button>
-          <input ref={fileRef} type="file" accept=".png,.jpg,.jpeg,.dcm,.dicom"
-            multiple className="hidden" onChange={e => handleFiles(e.target.files)} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".png,.jpg,.jpeg,.dcm,.dicom"
+            multiple
+            className="hidden"
+            onChange={(e) => handleFiles(e.target.files)}
+          />
         </div>
       </div>
 
-      {/* Stats Board */}
+      {/* Stats */}
       {data && (
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Total Studies', value: data.total, color: 'text-slate-200' },
-            { label: 'Pending Review', value: data.pending, color: 'text-urgent' },
-            { label: 'Highest Acuity', value: (data.cases[0]?.urgency_score ?? 0).toFixed(2), color: 'text-critical' },
-            { label: 'System Load', value: 'Nominal', color: 'text-chronic' },
-          ].map(s => (
-            <div key={s.label} className="glass rounded-2xl p-5 border-t-2 border-t-surface-4">
-              <div className={`text-3xl font-bold tracking-tight ${s.color}`}>{s.value}</div>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">{s.label}</div>
-            </div>
-          ))}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <StatCard icon={Layers} label="Total Studies" value={String(data.total)} tone="text-slate-100" accent="#38BDF8" />
+          <StatCard icon={Clock} label="Pending Review" value={String(data.pending)} tone="text-urgent" accent="#F59E0B" />
+          <StatCard
+            icon={Gauge}
+            label="Highest Acuity"
+            value={(data.cases[0]?.urgency_score ?? 0).toFixed(2)}
+            tone="text-critical"
+            accent="#F4536B"
+          />
+          <StatCard icon={Cpu} label="Engine" value="Local" sub="MedGemma 4B" tone="text-chronic" accent="#34D399" />
         </div>
       )}
 
-      {/* Filter tabs */}
+      {/* Filters */}
       <div className="flex gap-2 mb-6">
-        {(['all', 'pending', 'in_review', 'finalized'] as const).map(f => (
-          <button key={f} onClick={() => setFilter(f)}
+        {(['all', 'pending', 'in_review', 'finalized'] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
               filter === f
-                ? 'bg-accent-sky text-surface-1 shadow-md shadow-accent-sky/20'
+                ? 'bg-accent-teal/15 text-accent-teal border border-accent-teal/30'
                 : 'bg-surface-2 text-slate-400 hover:text-slate-200 hover:bg-surface-3 border border-border'
-            }`}>
+            }`}
+          >
             {f === 'all' ? 'All Studies' : f === 'in_review' ? 'In Review' : f.charAt(0).toUpperCase() + f.slice(1)}
           </button>
         ))}
@@ -128,34 +160,76 @@ export default function WorklistPage() {
 
       {/* Drop zone */}
       <div
-        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
         onDragLeave={() => setDragging(false)}
-        onDrop={e => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files); }}
-        className={`mb-6 border-2 border-dashed rounded-2xl p-6 text-center text-sm transition-all
-          ${dragging ? 'border-accent-sky bg-accent-sky/10 text-accent-sky scale-[1.01]' : 'border-border text-slate-500 bg-surface-1/50'}`}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          handleFiles(e.dataTransfer.files);
+        }}
+        className={`mb-6 border-2 border-dashed rounded-2xl p-6 text-center text-sm transition-all ${
+          dragging
+            ? 'border-accent-teal bg-accent-teal/10 text-accent-teal scale-[1.01]'
+            : 'border-border text-slate-500 bg-surface-1/40 hover:border-surface-4'
+        }`}
       >
-        <UploadCloud className="w-8 h-8 mx-auto mb-2 opacity-50" />
-        <span className="font-medium">Drag & drop CXR studies here</span> (PNG / JPG / DICOM)
+        <UploadCloud className="w-7 h-7 mx-auto mb-2 opacity-50" />
+        <span className="font-medium">Drag &amp; drop a chest X-ray</span> (PNG / JPG / DICOM)
       </div>
 
-      {/* Cases Grid */}
+      {/* Cases */}
       {loading ? (
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-24 rounded-2xl shimmer" />
+            <div key={i} className="h-28 rounded-2xl shimmer" />
           ))}
         </div>
       ) : cases.length === 0 ? (
-        <div className="text-center py-24 glass rounded-3xl border-dashed">
-          <Activity className="w-16 h-16 mx-auto mb-4 text-surface-4" />
-          <div className="text-xl font-bold text-slate-300">Worklist Empty</div>
-          <div className="text-sm text-slate-500 mt-2">No pending studies. You can rest.</div>
+        <div className="text-center py-24 card border-dashed">
+          <Activity className="w-14 h-14 mx-auto mb-4 text-surface-4" />
+          <div className="text-xl font-bold text-slate-300">Worklist clear</div>
+          <div className="text-sm text-slate-500 mt-2">
+            No studies in this view. Seed demo cases or upload a chest X-ray.
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
-          {cases.map(c => <CaseCard key={c.case_id} case_={c} onRefresh={load} />)}
+          {cases.map((c) => (
+            <CaseCard key={c.case_id} case_={c} onRefresh={load} />
+          ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  tone,
+  accent,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  sub?: string;
+  tone: string;
+  accent: string;
+}) {
+  return (
+    <div className="card card-hover p-5 relative overflow-hidden">
+      <div className="absolute left-0 top-0 h-full w-1" style={{ background: accent, opacity: 0.7 }} />
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</div>
+        <Icon className="w-4 h-4" style={{ color: accent }} />
+      </div>
+      <div className={`text-3xl font-extrabold tracking-tight mt-2 tabular ${tone}`}>{value}</div>
+      {sub && <div className="text-[11px] text-slate-500 mt-0.5 font-mono">{sub}</div>}
     </div>
   );
 }
@@ -165,31 +239,49 @@ function CaseCard({ case_: c, onRefresh }: { case_: CaseOut; onRefresh: () => vo
   const label = urgencyLabel(c.urgency_score);
 
   return (
-    <div className="group bg-surface-2 border border-border rounded-2xl p-4 hover:bg-surface-3
-                    transition-all duration-200 animate-slide-up shadow-sm hover:shadow-md hover:border-surface-4">
-      <div className="flex items-center gap-5">
-        {/* Urgency indicator */}
-        <div className="shrink-0 flex flex-col items-center justify-center w-12 h-14 rounded-xl bg-surface-1 border border-border">
-          <div className="text-[10px] font-bold uppercase text-slate-500 tracking-widest mb-1">Acuity</div>
-          <div className="w-6 h-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}80` }} />
+    <a
+      href={`/case/${c.case_id}`}
+      className="group block card card-hover p-4 animate-slide-up"
+    >
+      <div className="flex items-center gap-4">
+        {/* Thumbnail in a film frame, acuity ribbon */}
+        <div className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden film border border-border">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={caseImageUrl(c.case_id)}
+            alt={c.case_id}
+            loading="lazy"
+            className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.visibility = 'hidden';
+            }}
+          />
+          <div className="absolute left-0 bottom-0 right-0 h-1.5" style={{ background: color }} />
         </div>
 
-        {/* Case info */}
+        {/* Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-base font-bold text-slate-100 truncate tracking-tight">{c.case_id}</span>
-            <span className="text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider"
-              style={{ background: `${color}15`, color, border: `1px solid ${color}30` }}>
+          <div className="flex items-center gap-2.5 mb-2 flex-wrap">
+            <span className="text-base font-bold text-slate-100 tracking-tight">{c.case_id}</span>
+            <span
+              className="text-[11px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wider"
+              style={{ background: `${color}1A`, color, border: `1px solid ${color}40` }}
+            >
               {label} {c.urgency_score.toFixed(2)}
             </span>
             <StatusChip status={c.status} />
           </div>
-          <div className="flex flex-wrap gap-2">
-            {c.top_findings.map(f => (
-              <span key={f.label}
-                className="text-[11px] px-2.5 py-1 rounded-md border font-semibold"
-                style={{ borderColor: `${tierColor(f.tier)}40`, color: tierColor(f.tier),
-                         background: `${tierColor(f.tier)}10` }}>
+          <div className="flex flex-wrap gap-1.5">
+            {c.top_findings.map((f) => (
+              <span
+                key={f.label}
+                className="text-[11px] px-2 py-0.5 rounded-md border font-semibold"
+                style={{
+                  borderColor: `${tierColor(f.tier)}40`,
+                  color: tierColor(f.tier),
+                  background: `${tierColor(f.tier)}12`,
+                }}
+              >
                 {f.label} {(f.probability * 100).toFixed(0)}%
               </span>
             ))}
@@ -197,21 +289,25 @@ function CaseCard({ case_: c, onRefresh }: { case_: CaseOut; onRefresh: () => vo
         </div>
 
         {/* Actions */}
-        <div className="shrink-0 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={async () => { await wlApi.deleteCase(c.case_id); onRefresh(); }}
-            className="p-2.5 text-slate-500 rounded-xl hover:text-critical hover:bg-critical/10 transition-colors"
-            title="Remove Case">
+        <div className="shrink-0 flex items-center gap-1.5">
+          <button
+            onClick={async (e) => {
+              e.preventDefault();
+              await wlApi.deleteCase(c.case_id);
+              onRefresh();
+            }}
+            className="p-2.5 text-slate-500 rounded-xl hover:text-critical hover:bg-critical/10 transition-colors opacity-0 group-hover:opacity-100"
+            title="Remove case"
+          >
             <Trash2 className="w-5 h-5" />
           </button>
-          <a href={`/case/${c.case_id}`}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-accent-sky text-surface-1 text-sm font-bold
-                       rounded-xl hover:bg-accent-teal hover:shadow-lg hover:shadow-accent-teal/20 transition-all">
-            Open Study
+          <span className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold rounded-xl text-slate-300 bg-surface-3 group-hover:bg-gradient-to-r group-hover:from-accent-teal group-hover:to-accent-sky group-hover:text-surface-1 transition-all">
+            Open
             <ChevronRight className="w-4 h-4" />
-          </a>
+          </span>
         </div>
       </div>
-    </div>
+    </a>
   );
 }
 
@@ -222,7 +318,5 @@ function StatusChip({ status }: { status: string }) {
     finalized: { label: 'FINALIZED', cls: 'bg-chronic/10 text-chronic border-chronic/20' },
   };
   const s = map[status] ?? { label: status.toUpperCase(), cls: 'bg-surface-3 text-slate-400 border-border' };
-  return (
-    <span className={`text-[10px] px-2 py-1 rounded-md border font-bold tracking-wider ${s.cls}`}>{s.label}</span>
-  );
+  return <span className={`text-[10px] px-2 py-1 rounded-md border font-bold tracking-wider ${s.cls}`}>{s.label}</span>;
 }

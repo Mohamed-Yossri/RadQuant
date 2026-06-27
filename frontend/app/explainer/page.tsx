@@ -33,7 +33,9 @@ export default function ExplainerPage() {
           </span>
         </h1>
         <p className="text-sm text-slate-500 mt-2 max-w-2xl leading-relaxed">
-          Translate complex radiology reports into plain language. Designed for radiologists to draft patient-friendly summaries before sharing them via the portal. Works on CT, MRI, X-ray, and ultrasound.
+          A general report-translation utility bundled with the workstation: it turns a finished
+          radiology report into plain language for patients. Text-only, so it works on any modality&apos;s
+          report (X-ray, CT, MRI, ultrasound) — drafted for a radiologist to review before sharing.
         </p>
       </div>
 
