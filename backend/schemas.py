@@ -140,3 +140,23 @@ class InsightsGraphOut(BaseModel):
     edges: List[GraphEdgeOut]
     alerts: List[str]
     hub_sizes: Dict[str, int]
+
+
+# ── General Medical mode ─────────────────────────────────────────────────────
+
+class GeneralAnalyzeOut(BaseModel):
+    image_id: str
+    image_url: str
+    modality: str
+    region: str
+    is_cxr: bool
+    description: str
+
+
+class GeneralVQAIn(BaseModel):
+    image_id: str
+    question: str
+
+
+class GeneralVQAOut(BaseModel):
+    answer: str

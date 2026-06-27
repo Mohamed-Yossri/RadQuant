@@ -333,15 +333,18 @@ uvicorn backend.main:app --port 8000          # backend
 cd frontend && npm install && npm run dev      # frontend → http://localhost:3000
 ```
 
-The workstation has five pages:
+The workstation has six pages:
 
 | Page | What You Do |
 |---|---|
 | **📋 Worklist** | All cases ranked by urgency, with a thumbnail per study. "Seed Cases" ingests the bundled real chest X-rays through the classify → triage pipeline; "Upload Study" adds your own. |
 | **🩺 Active Case** | Open a case → generate draft report + Grad-CAM → localize / segment → edit findings → omission QC → finalize. Ask the tool-using assistant about the image. |
 | **🕸️ Insights Graph** | An Obsidian-style knowledge graph linking cases to the pathologies they share, with cohort signals. |
+| **🧠 General Medical** | Drop in *any* medical image (CT, MRI, dermatology, fundus, histopathology) → MedGemma auto-detects the modality, writes a domain-appropriate description, and answers questions. No CXR specialist tools run here; if it detects a chest X-ray it offers to open the full workstation instead. |
 | **🗣️ Patient Explainer** | Paste any radiology report (any modality) → plain-language patient version with hover glossary. |
 | **⚙️ System Settings** | Models, inference config, detection thresholds, and the product-vs-benchmark scope note. |
+
+> The **General Medical** page exists because the engine — Google's MedGemma 4B — is a *general* medical vision-language model (trained on chest X-ray, CT, dermatology, fundus and histopathology; see Google's published benchmarks: SLAKE 72.3, PathMCQA 69.8, DermMCQA 71.8, EyePACS 64.9). RadQuant's **depth** is chest X-ray (classifier, grounding, segmentation, triage); this page surfaces the engine's **breadth** without pretending the specialist tools generalize.
 
 *(A legacy Streamlit UI also ships: `streamlit run radquant/ui/app.py`.)*
 

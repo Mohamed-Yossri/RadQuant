@@ -197,6 +197,30 @@ export const insights = {
     ),
 };
 
+// ── General Medical (any-modality, MedGemma-only) ─────────────────────────────
+
+export interface GeneralAnalyzeOut {
+  image_id: string;
+  image_url: string;
+  modality: string;
+  region: string;
+  is_cxr: boolean;
+  description: string;
+}
+
+export const general = {
+  analyze: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api<GeneralAnalyzeOut>('/general/analyze', { method: 'POST', body: form });
+  },
+  vqa: (imageId: string, question: string) =>
+    api<{ answer: string }>('/general/vqa', {
+      method: 'POST',
+      body: JSON.stringify({ image_id: imageId, question }),
+    }),
+};
+
 // ── Urgency helpers ───────────────────────────────────────────────────────────
 
 export function urgencyColor(score: number): string {
