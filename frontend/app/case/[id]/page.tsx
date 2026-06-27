@@ -26,6 +26,9 @@ export default function CasePage() {
   const [qcLoading, setQcLoading] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [finalized, setFinalized] = useState(false);
+  // which vision action is running, + a status line for its result/errors
+  const [busy, setBusy] = useState<null | 'gradcam' | 'localize' | 'segment'>(null);
+  const [actionMsg, setActionMsg] = useState<{ kind: 'info' | 'success' | 'error'; text: string } | null>(null);
   const [chat, setChat] = useState<{ role: 'user' | 'ai'; text: string; tools?: string[] }[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -59,24 +62,60 @@ export default function CasePage() {
   };
 
   const runGradCAM = async () => {
-    const r = await casesApi.gradcam(caseId);
-    setOverlays(o => ({ ...o, gradcam: r.overlay_url }));
-    setViewMode('gradcam');
+    setBusy('gradcam');
+    setActionMsg(null);
+    try {
+      const r = await casesApi.gradcam(caseId);
+      setOverlays(o => ({ ...o, gradcam: r.overlay_url }));
+      setViewMode('gradcam');
+      setActionMsg({ kind: 'success', text: `Grad-CAM ready — focused on ${r.top_finding}.` });
+    } catch (e) {
+      setActionMsg({ kind: 'error', text: `Grad-CAM failed: ${e instanceof Error ? e.message : e}` });
+    } finally {
+      setBusy(null);
+    }
   };
 
   const runLocalize = async () => {
-    const r = await casesApi.localize(caseId);
-    setOverlays(o => ({ ...o, grounding: r.overlay_url }));
-    setLocalFindings(r.findings);
-    setViewMode('grounding');
+    setBusy('localize');
+    setActionMsg(null);
+    try {
+      const r = await casesApi.localize(caseId);
+      setLocalFindings(r.findings);
+      if (r.findings.length > 0 && r.overlay_url) {
+        setOverlays(o => ({ ...o, grounding: r.overlay_url }));
+        setViewMode('grounding');
+        setActionMsg({ kind: 'success', text: `Localized ${r.findings.length} finding${r.findings.length > 1 ? 's' : ''}.` });
+      } else {
+        setActionMsg({ kind: 'info', text: 'No focal findings to localize on this image — the grounding model found nothing to box.' });
+      }
+    } catch (e) {
+      setActionMsg({ kind: 'error', text: `Localization failed: ${e instanceof Error ? e.message : e}` });
+    } finally {
+      setBusy(null);
+    }
   };
 
   const runSegment = async () => {
-    const r = await casesApi.segment(caseId);
-    setOverlays(o => ({ ...o, segmentation: r.overlay_url }));
-    setStructures(r.structures);
-    setCtr(r.cardiothoracic_ratio);
-    setViewMode('segmentation');
+    setBusy('segment');
+    setActionMsg(null);
+    try {
+      const r = await casesApi.segment(caseId);
+      if (r.overlay_url) {
+        setOverlays(o => ({ ...o, segmentation: r.overlay_url }));
+        setStructures(r.structures);
+        setCtr(r.cardiothoracic_ratio);
+        setViewMode('segmentation');
+        const ctrTxt = r.cardiothoracic_ratio != null ? ` · CTR ${r.cardiothoracic_ratio.toFixed(2)} (${r.ctr_flag})` : '';
+        setActionMsg({ kind: 'success', text: `Segmented ${r.structures.length} structure${r.structures.length > 1 ? 's' : ''}${ctrTxt}.` });
+      } else {
+        setActionMsg({ kind: 'info', text: 'Segmentation produced no anatomy mask for this image.' });
+      }
+    } catch (e) {
+      setActionMsg({ kind: 'error', text: `Segmentation failed: ${e instanceof Error ? e.message : e}` });
+    } finally {
+      setBusy(null);
+    }
   };
 
   const runQC = async () => {
@@ -186,12 +225,48 @@ export default function CasePage() {
             <ActionBtn onClick={generateDraft} loading={draftLoading} icon={<Cpu className="w-4 h-4" />}
               label="Draft + Grad-CAM" primary hint={draftProgress} />
             <div className="w-px h-6 my-auto bg-border mx-1"></div>
-            <ActionBtn onClick={runGradCAM} icon={<Flame className="w-4 h-4 text-orange-500" />} label="Grad-CAM" />
-            <ActionBtn onClick={runLocalize} icon={<Focus className="w-4 h-4 text-accent-sky" />} label="Localize" />
-            <ActionBtn onClick={runSegment} icon={<Layers className="w-4 h-4 text-purple-400" />} label="Segment" />
+            <ActionBtn onClick={runGradCAM} loading={busy === 'gradcam'} disabled={busy !== null}
+              hint={busy === 'gradcam' ? 'Working…' : undefined}
+              icon={<Flame className="w-4 h-4 text-orange-500" />} label="Grad-CAM" />
+            <ActionBtn onClick={runLocalize} loading={busy === 'localize'} disabled={busy !== null}
+              hint={busy === 'localize' ? 'Localizing…' : undefined}
+              icon={<Focus className="w-4 h-4 text-accent-sky" />} label="Localize" />
+            <ActionBtn onClick={runSegment} loading={busy === 'segment'} disabled={busy !== null}
+              hint={busy === 'segment' ? 'Segmenting…' : undefined}
+              icon={<Layers className="w-4 h-4 text-purple-400" />} label="Segment" />
             <div className="flex-1"></div>
             <ActionBtn onClick={runQC} loading={qcLoading} icon={<ShieldAlert className="w-4 h-4 text-urgent" />} label="Omission QC" />
           </div>
+
+          {/* Action status line — feedback for the vision tools */}
+          {(busy || actionMsg) && (
+            <div
+              className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-medium border ${
+                busy
+                  ? 'bg-accent-sky/10 border-accent-sky/30 text-accent-sky'
+                  : actionMsg?.kind === 'error'
+                  ? 'bg-critical/10 border-critical/30 text-critical'
+                  : actionMsg?.kind === 'success'
+                  ? 'bg-chronic/10 border-chronic/30 text-chronic'
+                  : 'bg-surface-2 border-border text-slate-400'
+              }`}
+            >
+              {busy ? (
+                <>
+                  <Zap className="w-3.5 h-3.5 animate-pulse shrink-0" />
+                  <span>
+                    {busy === 'localize'
+                      ? 'Running the grounding model… (first run loads ~8 GB, this can take up to a minute)'
+                      : busy === 'segment'
+                      ? 'Segmenting lung fields & heart…'
+                      : 'Computing Grad-CAM…'}
+                  </span>
+                </>
+              ) : (
+                <span>{actionMsg?.text}</span>
+              )}
+            </div>
+          )}
 
           <div className="glass rounded-2xl overflow-hidden flex-1 flex flex-col min-h-[600px] border border-border">
             {/* View Selector Tabs */}
