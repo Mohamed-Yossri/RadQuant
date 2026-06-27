@@ -41,7 +41,9 @@ async def analyze(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, f)
     image_path = str(dest)
 
+    spacing = None
     if suffix in {".dcm", ".dicom"}:
+        spacing = _dicom_spacing(image_path)
         from radquant.foundation import DicomProcessorTool
         out, _ = DicomProcessorTool(temp_dir=str(UPLOAD_DIR))._run(image_path)
         image_path = out.get("image_path", image_path)
@@ -58,7 +60,22 @@ async def analyze(file: UploadFile = File(...)):
         region=det["region"],
         is_cxr=det["is_cxr"],
         description=desc,
+        pixel_spacing_mm=spacing,
     )
+
+
+def _dicom_spacing(dcm_path: str):
+    """mm-per-pixel from DICOM PixelSpacing / ImagerPixelSpacing (square assumed)."""
+    try:
+        import pydicom
+        ds = pydicom.dcmread(dcm_path, stop_before_pixels=True)
+        for attr in ("PixelSpacing", "ImagerPixelSpacing"):
+            val = getattr(ds, attr, None)
+            if val:
+                return round(float(val[0]), 4)
+    except Exception:  # noqa: BLE001
+        pass
+    return None
 
 
 @router.post("/vqa", response_model=GeneralVQAOut)

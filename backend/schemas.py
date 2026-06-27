@@ -151,6 +151,7 @@ class GeneralAnalyzeOut(BaseModel):
     region: str
     is_cxr: bool
     description: str
+    pixel_spacing_mm: Optional[float] = None   # mm per pixel from DICOM, if available
 
 
 class GeneralVQAIn(BaseModel):
@@ -173,5 +174,7 @@ class GeneralSegmentOut(BaseModel):
     area_pct: float
     width_px: int
     height_px: int
+    longest_diameter_px: float
+    short_axis_px: float
     image_w: int
     image_h: int

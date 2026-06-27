@@ -206,6 +206,7 @@ export interface GeneralAnalyzeOut {
   region: string;
   is_cxr: boolean;
   description: string;
+  pixel_spacing_mm: number | null;
 }
 
 export interface GeneralSegmentOut {
@@ -214,6 +215,8 @@ export interface GeneralSegmentOut {
   area_pct: number;
   width_px: number;
   height_px: number;
+  longest_diameter_px: number;
+  short_axis_px: number;
   image_w: number;
   image_h: number;
 }
