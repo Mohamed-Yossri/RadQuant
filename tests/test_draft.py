@@ -39,5 +39,16 @@ def test_findings_summary_empty():
 
 
 def test_top_findings_above():
-    out = top_findings_above({"A": 0.9, "B": 0.4, "C": 0.6}, 0.5)
+    # With explicit threshold override
+    out = top_findings_above({"A": 0.9, "B": 0.4, "C": 0.6}, threshold=0.5)
     assert [k for k, _ in out] == ["A", "C"]
+
+
+def test_per_pathology_threshold_pneumothorax():
+    """Pneumothorax at 0.36 is above its per-pathology threshold (0.35) → included."""
+    from radquant.prompts.draft_report import top_findings_above
+    findings = {"Pneumothorax": 0.36, "Hernia": 0.55}  # Hernia threshold is 0.60
+    out = top_findings_above(findings)   # no global override → use per-pathology
+    labels = [k for k, _ in out]
+    assert "Pneumothorax" in labels, "Pneumothorax at 0.36 should exceed threshold 0.35"
+    assert "Hernia" not in labels, "Hernia at 0.55 should be below its threshold 0.60"

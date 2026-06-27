@@ -43,7 +43,7 @@ class MedGemma:
             load_kwargs["quantization_config"] = BitsAndBytesConfig(
                 load_in_4bit=True,
                 bnb_4bit_quant_type="nf4",
-                bnb_4bit_compute_dtype=torch.bfloat16,
+                bnb_4bit_compute_dtype=torch.float16,
             )
             load_kwargs["device_map"] = "auto"
         else:  # bf16
@@ -65,6 +65,8 @@ class MedGemma:
         system: Optional[str] = None,
         do_sample: bool = False,
         temperature: float = 1.0,
+        num_beams: int = 4,
+        repetition_penalty: float = 1.2,
     ) -> str:
         """Run MedGemma on an optional image plus a text prompt.
 
@@ -73,6 +75,11 @@ class MedGemma:
             prompt: the user instruction.
             max_new_tokens: generation budget.
             system: optional system message.
+            num_beams: beam-search width.  4 beams produce more coherent
+                structured output (FINDINGS / IMPRESSION) than greedy decoding
+                at minimal extra cost.  Set to 1 to revert to greedy.
+            repetition_penalty: penalise repeated n-grams; 1.2 reduces
+                the tendency to echo classifier findings verbatim.
 
         Returns:
             The decoded model response (new tokens only), stripped.
@@ -99,12 +106,18 @@ class MedGemma:
         ).to(self.model.device)
 
         in_len = inputs["input_ids"].shape[-1]
-        gen = self.model.generate(
-            **inputs,
+        gen_kwargs: dict = dict(
             max_new_tokens=max_new_tokens,
-            do_sample=do_sample,
-            temperature=temperature if do_sample else None,
+            repetition_penalty=repetition_penalty,
         )
+        if do_sample:
+            gen_kwargs["do_sample"] = True
+            gen_kwargs["temperature"] = temperature
+        else:
+            # Beam search — best for structured medical text
+            gen_kwargs["do_sample"] = False
+            gen_kwargs["num_beams"] = num_beams
+        gen = self.model.generate(**inputs, **gen_kwargs)
         return self.processor.decode(gen[0][in_len:], skip_special_tokens=True).strip()
 
     @torch.inference_mode()
@@ -117,7 +130,9 @@ class MedGemma:
         max_new_tokens: int = 384,
         do_sample: bool = False,
         temperature: float = 0.7,
-        pan_and_scan: bool = False,
+        pan_and_scan: bool = True,
+        num_beams: int = 4,
+        repetition_penalty: float = 1.2,
     ) -> str:
         """Generate over MULTIPLE interleaved images (Gemma3 multi-image).
 
@@ -125,7 +140,13 @@ class MedGemma:
             images: list of PIL images or path strings.
             labels: optional per-image captions (e.g. ["Figure 1", "Figure 2A"]).
             pan_and_scan: tile large/non-square images into crops for higher
-                effective resolution (helps multi-panel / annotated figures).
+                effective resolution.  Defaulted to *True* for CXR inputs:
+                chest X-rays are wide-aspect images where pan-and-scan
+                captures fine detail (nodules, interstitial markings) that a
+                single-crop resize would blur.
+            num_beams: beam-search width (4 by default).  Ignored when
+                ``do_sample=True``.
+            repetition_penalty: penalise repeated phrases.
         """
         pil = [(Image.open(i) if isinstance(i, str) else i).convert("RGB") for i in images]
         content: list[dict] = []
@@ -140,8 +161,9 @@ class MedGemma:
             messages.append({"role": "system", "content": [{"type": "text", "text": system}]})
         messages.append({"role": "user", "content": content})
 
+        # Pan-and-scan: 4 crops give better fine-detail resolution on CXR.
         pas_kwargs = (
-            {"do_pan_and_scan": True, "pan_and_scan_max_num_crops": 2,
+            {"do_pan_and_scan": True, "pan_and_scan_max_num_crops": 4,
              "pan_and_scan_min_crop_size": 256, "pan_and_scan_min_ratio_to_activate": 1.2}
             if pan_and_scan else {}
         )
@@ -150,10 +172,17 @@ class MedGemma:
             return_dict=True, return_tensors="pt", **pas_kwargs,
         ).to(self.model.device)
         in_len = inputs["input_ids"].shape[-1]
-        gen = self.model.generate(
-            **inputs, max_new_tokens=max_new_tokens,
-            do_sample=do_sample, temperature=temperature if do_sample else None,
+        gen_kwargs: dict = dict(
+            max_new_tokens=max_new_tokens,
+            repetition_penalty=repetition_penalty,
         )
+        if do_sample:
+            gen_kwargs["do_sample"] = True
+            gen_kwargs["temperature"] = temperature
+        else:
+            gen_kwargs["do_sample"] = False
+            gen_kwargs["num_beams"] = num_beams
+        gen = self.model.generate(**inputs, **gen_kwargs)
         return self.processor.decode(gen[0][in_len:], skip_special_tokens=True).strip()
 
 

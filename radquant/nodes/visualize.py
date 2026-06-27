@@ -34,7 +34,7 @@ def gradcam_overlay(
     from PIL import Image
 
     tool = get_classifier()
-    model = tool.model
+    model = tool.models[0]
 
     # Choose the target pathology.
     if finding is None:

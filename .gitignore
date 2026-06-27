@@ -76,3 +76,22 @@ dist/
 # ---------- Misc ----------
 main.py
 radquant.egg-info/
+
+# ---------- Added per user request ----------
+temp_node/
+node_installer
+*.exe
+*.msi
+
+# ---------- Node & Next.js ----------
+node_modules/
+.next/
+out/
+build/
+.vercel/
+
+# ---------- OS & Misc ----------
+.DS_Store
+Thumbs.db
+backend/uploads/
+backend/temp/

@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from radquant.data import sample  # noqa: E402
+from radquant.data import sample  # noqa: E402جي
 
 
 def hr(title: str) -> None:
