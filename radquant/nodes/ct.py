@@ -171,13 +171,13 @@ def dicom_to_nifti(src: str, out_path: Path) -> Path:
             ds = pydicom.dcmread(str(p), force=True, stop_before_pixels=True)
         except Exception:
             continue
-        if int(getattr(ds, "Rows", 0)) < 1 or getattr(ds, "ImagePositionPatient", None) is None:
+        if int(getattr(ds, "Rows", 0)) < 1:        # not an image (DICOMDIR, report, junk)
             continue
         candidates.append((p, ds))
 
     if not candidates:
         raise ValueError(
-            "No DICOM image slices with position info found in the upload. "
+            "No DICOM image slices found in the upload. "
             "Make sure the .zip contains the CT series' .dcm files.")
 
     # group by (series UID, image shape) so localizers/scouts don't pollute the stack
@@ -192,29 +192,70 @@ def dicom_to_nifti(src: str, out_path: Path) -> Path:
             f"Largest consistent DICOM series has only {len(series)} slice(s); a CT "
             "volume needs many. Upload the full axial series as a .zip.")
 
-    iop = np.array(series[0][1].ImageOrientationPatient, dtype=float)
+    # orientation — assume axial if the tag is absent (common in anonymised exports)
+    iop_raw = getattr(series[0][1], "ImageOrientationPatient", None)
+    iop = np.array(iop_raw if iop_raw is not None else [1, 0, 0, 0, 1, 0], dtype=float)
     col_dir, row_dir = iop[0:3], iop[3:6]            # X (cols), Y (rows)
     normal = np.cross(col_dir, row_dir)
-    series.sort(key=lambda pd: float(np.dot(np.array(pd[1].ImagePositionPatient, float), normal)))
 
-    # read pixels now (full read), skipping any individually unreadable slice
-    slabs, kept = [], []
+    # Order slices. Prefer true geometry (ImagePositionPatient projected on the
+    # normal); fall back to InstanceNumber / SliceLocation if positions were
+    # stripped — so we still build a correctly-ordered stack.
+    have_ipp = getattr(series[0][1], "ImagePositionPatient", None) is not None
+
+    def _sort_key(pd):
+        ds = pd[1]
+        if getattr(ds, "ImagePositionPatient", None) is not None:
+            return float(np.dot(np.array(ds.ImagePositionPatient, float), normal))
+        if getattr(ds, "InstanceNumber", None) is not None:
+            return float(ds.InstanceNumber)
+        return float(getattr(ds, "SliceLocation", 0) or 0)
+
+    series.sort(key=_sort_key)
+
+    # read pixels now (full read), skipping any individually unreadable slice.
+    # Capture the first decode error so a codec/encoding problem is reported, not hidden.
+    slabs, kept, first_err = [], [], None
     for p, _ in series:
         try:
             ds = pydicom.dcmread(str(p), force=True)
             slabs.append(_hu(ds, ds.pixel_array))
             kept.append(ds)
-        except Exception:
+        except Exception as e:  # noqa: BLE001
+            if first_err is None:
+                first_err = f"{type(e).__name__}: {e}"
             continue
     if len(kept) < 3:
-        raise ValueError("Too many DICOM slices failed to decode (need a CT/JPEG plugin?).")
+        raise ValueError(
+            "Could not decode the DICOM pixel data — only "
+            f"{len(kept)} slice(s) read. First error was [{first_err}]. "
+            "If these are compressed slices, a codec plugin may be missing.")
+
+    # guard against slices that disagree on shape despite the same series UID
+    shapes = {s.shape for s in slabs}
+    if len(shapes) > 1:
+        from collections import Counter
+        dom = Counter(s.shape for s in slabs).most_common(1)[0][0]
+        slabs, kept = zip(*[(s, k) for s, k in zip(slabs, kept) if s.shape == dom])
+        slabs, kept = list(slabs), list(kept)
 
     vol = np.stack(slabs, axis=-1)                    # [rows, cols, slices]
     ds0 = kept[0]
-    drow, dcol = (float(x) for x in ds0.PixelSpacing)
-    ipp0 = np.array(ds0.ImagePositionPatient, float)
-    span = np.dot(np.array(kept[-1].ImagePositionPatient, float) - ipp0, normal)
-    slice_sp = abs(span) / (len(kept) - 1) or float(getattr(ds0, "SliceThickness", 1) or 1)
+    ps = getattr(ds0, "PixelSpacing", None) or [1.0, 1.0]
+    drow, dcol = float(ps[0]), float(ps[1])
+
+    # slice spacing: from real positions if present, else SpacingBetweenSlices /
+    # SliceThickness. origin: first slice's position if present, else 0.
+    if have_ipp and getattr(kept[-1], "ImagePositionPatient", None) is not None:
+        ipp0 = np.array(ds0.ImagePositionPatient, float)
+        span = np.dot(np.array(kept[-1].ImagePositionPatient, float) - ipp0, normal)
+        slice_sp = abs(span) / (len(kept) - 1)
+    else:
+        ipp0 = np.array(getattr(ds0, "ImagePositionPatient", [0.0, 0.0, 0.0]), float)
+        slice_sp = 0.0
+    if not slice_sp:
+        slice_sp = float(getattr(ds0, "SpacingBetweenSlices", 0) or
+                         getattr(ds0, "SliceThickness", 0) or 1.0)
 
     affine = np.eye(4)
     affine[:3, 0] = row_dir * drow
