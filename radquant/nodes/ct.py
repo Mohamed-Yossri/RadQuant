@@ -21,6 +21,31 @@ import numpy as np
 
 CT_DIR = Path("temp") / "ct"
 
+# Approximate adult reference volume ranges (ml). Deliberately rough — surfaced
+# in the UI as "approx. adult reference", not a calibrated normal range. Used to
+# flag gross enlargement/atrophy (e.g. hepatomegaly, splenomegaly) which is the
+# decision-relevant signal a volume measurement can add.
+_REF_VOL = {
+    "liver": (1200, 1900),
+    "spleen": (100, 300),
+    "kidney_left": (110, 210),
+    "kidney_right": (110, 210),
+    "pancreas": (50, 120),
+    "gallbladder": (15, 70),
+    "thyroid_gland": (8, 25),
+    "brain": (1100, 1500),
+    "urinary_bladder": (50, 500),
+}
+
+
+def _flag_volume(name: str, ml: float):
+    rng = _REF_VOL.get(name)
+    if not rng:
+        return None, None, None
+    lo, hi = rng
+    flag = "low" if ml < lo else "high" if ml > hi else "normal"
+    return flag, float(lo), float(hi)
+
 
 def _window(img: np.ndarray, level: float = 40, width: float = 400) -> np.ndarray:
     lo, hi = level - width / 2, level + width / 2
@@ -58,11 +83,14 @@ def analyze_ct(input_path: str, study_id: Optional[str] = None,
     stats_path = next((p for p in (work / "statistics.json", seg_file.parent / "statistics.json")
                        if p.exists()), None)
     stats = json.loads(stats_path.read_text()) if stats_path else {}
-    volumes = sorted(
-        ({"name": k, "ml": round(v["volume"] / 1000, 1)}
-         for k, v in stats.items() if isinstance(v, dict) and v.get("volume", 0) > 0),
-        key=lambda d: -d["ml"],
-    )
+    volumes = []
+    for k, v in stats.items():
+        if not (isinstance(v, dict) and v.get("volume", 0) > 0):
+            continue
+        ml = round(v["volume"] / 1000, 1)
+        flag, lo, hi = _flag_volume(k, ml)
+        volumes.append({"name": k, "ml": ml, "flag": flag, "ref_low": lo, "ref_high": hi})
+    volumes.sort(key=lambda d: -d["ml"])
 
     # render slices (original grayscale + colored overlay), study-prefixed
     ct = nib.load(input_path).get_fdata()
@@ -106,10 +134,18 @@ def draft_ct_report(middle_overlay_path: str, volumes: List[Dict]) -> str:
     from radquant.models.medgemma import generate
 
     txt = ", ".join(f"{v['name'].replace('_', ' ')} {v['ml']:.0f} ml" for v in volumes[:10])
+    abn = [
+        f"{v['name'].replace('_', ' ')} {v['ml']:.0f} ml ({v['flag']} vs ref "
+        f"{v['ref_low']:.0f}-{v['ref_high']:.0f} ml)"
+        for v in volumes if v.get("flag") in ("high", "low")
+    ]
+    abn_txt = ("\nStructures outside the approximate adult reference range: "
+               + "; ".join(abn) + ".") if abn else ""
     prompt = (
         "This is an axial CT slice with automatic organ segmentation overlaid. "
-        f"Automatically measured organ volumes (TotalSegmentator): {txt}.\n"
-        "Provide a brief structured CT read.\nFINDINGS: ...\nIMPRESSION: ...\n"
+        f"Automatically measured organ volumes (TotalSegmentator): {txt}.{abn_txt}\n"
+        "Provide a brief structured CT read. Comment on any structure flagged "
+        "outside its reference range.\nFINDINGS: ...\nIMPRESSION: ...\n"
         "Describe only what is supported; do not invent. Begin with 'FINDINGS:'."
     )
     return generate(middle_overlay_path, prompt, max_new_tokens=300).strip()

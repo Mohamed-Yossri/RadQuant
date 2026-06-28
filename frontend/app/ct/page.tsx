@@ -1,9 +1,10 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { ct as ctApi, CtAnalyzeOut } from '@/lib/api';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import { ct as ctApi, CtAnalyzeOut, CtVolume } from '@/lib/api';
 import {
   UploadCloud, Layers, Sparkles, AlertTriangle, ChevronLeft, ChevronRight, Boxes,
+  ArrowUp, ArrowDown,
 } from 'lucide-react';
 
 // A few large organs we colour-flag if present (purely cosmetic grouping).
@@ -12,6 +13,34 @@ function volColor(name: string): string {
   if (/vertebrae|rib|sacrum|femur|hip|humerus|clavicula|scapula/.test(name)) return '#94A3B8';
   if (/gluteus|iliopsoas|muscle/.test(name)) return '#F59E0B';
   return '#64748B';
+}
+
+function VolRow({ v }: { v: CtVolume }) {
+  const flagged = v.flag === 'high' || v.flag === 'low';
+  return (
+    <div
+      className={`flex items-center gap-2.5 text-sm py-1.5 px-2 rounded-md border-b border-border/40 ${
+        flagged ? 'bg-urgent/10' : ''
+      }`}
+      title={v.ref_low != null ? `reference ${v.ref_low}–${v.ref_high} ml` : undefined}
+    >
+      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: volColor(v.name) }} />
+      <span className={`truncate ${flagged ? 'text-slate-100 font-medium' : 'text-slate-300'}`}>
+        {v.name.replace(/_/g, ' ')}
+      </span>
+      {v.flag === 'high' && (
+        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-critical/15 text-critical border border-critical/30">
+          <ArrowUp className="w-2.5 h-2.5" /> high
+        </span>
+      )}
+      {v.flag === 'low' && (
+        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent-sky/15 text-accent-sky border border-accent-sky/30">
+          <ArrowDown className="w-2.5 h-2.5" /> low
+        </span>
+      )}
+      <span className="ml-auto text-slate-100 font-mono tabular font-semibold">{v.ml.toFixed(1)} ml</span>
+    </div>
+  );
 }
 
 export default function CtPage() {
@@ -37,8 +66,25 @@ export default function CtPage() {
     }
   };
 
+  const step = useCallback((d: number) => {
+    if (!result) return;
+    setIdx((i) => Math.max(0, Math.min(result.n_slices - 1, i + d)));
+  }, [result]);
+
+  // keyboard arrows scroll the stack
+  useEffect(() => {
+    if (!result) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); step(-1); }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); step(1); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [result, step]);
+
   const cur = result?.slices[idx];
   const src = cur ? (overlay ? cur.overlay : cur.orig) : '';
+  const abnormal = result?.volumes.filter((v) => v.flag === 'high' || v.flag === 'low') ?? [];
 
   return (
     <div className="p-8 max-w-6xl mx-auto animate-fade-in">
@@ -94,9 +140,13 @@ export default function CtPage() {
                 </button>
                 <div className="text-xs text-slate-500 font-mono">slice {idx + 1} / {result.n_slices}</div>
               </div>
-              <div className="film rounded-lg overflow-hidden flex items-center justify-center min-h-[360px]">
+              <div
+                className="film rounded-lg overflow-hidden flex items-center justify-center min-h-[360px] cursor-ns-resize"
+                onWheel={(e) => { e.preventDefault(); step(e.deltaY > 0 ? 1 : -1); }}
+                title="Scroll to move through slices"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt={`slice ${idx}`} className="max-w-full max-h-[460px] object-contain" />
+                <img src={src} alt={`slice ${idx}`} draggable={false} className="max-w-full max-h-[460px] object-contain select-none" />
               </div>
               {/* slider */}
               <div className="flex items-center gap-3 px-2 py-2">
@@ -104,7 +154,7 @@ export default function CtPage() {
                 <input type="range" min={0} max={result.n_slices - 1} value={idx} onChange={(e) => setIdx(parseInt(e.target.value))} className="flex-1 accent-accent-sky cursor-pointer" />
                 <button onClick={() => setIdx((i) => Math.min(result.n_slices - 1, i + 1))} className="p-1.5 rounded-lg hover:bg-surface-3 text-slate-400"><ChevronRight className="w-4 h-4" /></button>
               </div>
-              <div className="px-2 pb-1 text-[11px] text-slate-500">Scroll through the stack · toggle the colored organ segmentation.</div>
+              <div className="px-2 pb-1 text-[11px] text-slate-500">Scroll / arrow keys to move through the stack · toggle the colored organ segmentation.</div>
             </div>
 
             {/* Report */}
@@ -121,15 +171,18 @@ export default function CtPage() {
                 <div className="text-xs font-bold text-slate-300 uppercase tracking-widest">Organ volumes</div>
                 <span className="text-[10px] px-2 py-0.5 rounded-md bg-accent-teal/10 text-accent-teal border border-accent-teal/20 font-bold">{result.volumes.length} structures</span>
               </div>
-              <div className="space-y-1 max-h-[560px] overflow-auto pr-1">
+              {abnormal.length > 0 && (
+                <div className="mb-3 p-2.5 rounded-lg bg-urgent/10 border border-urgent/25 text-[11px] text-urgent flex items-start gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span>{abnormal.length} structure{abnormal.length > 1 ? 's' : ''} outside the approximate adult reference range — review highlighted rows.</span>
+                </div>
+              )}
+              <div className="space-y-0.5 max-h-[540px] overflow-auto pr-1">
                 {result.volumes.map((v) => (
-                  <div key={v.name} className="flex items-center gap-2.5 text-sm py-1.5 border-b border-border/50">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: volColor(v.name) }} />
-                    <span className="text-slate-300 truncate">{v.name.replace(/_/g, ' ')}</span>
-                    <span className="ml-auto text-slate-100 font-mono tabular font-semibold">{v.ml.toFixed(1)} ml</span>
-                  </div>
+                  <VolRow key={v.name} v={v} />
                 ))}
               </div>
+              <div className="mt-2 text-[10px] text-slate-600">Reference ranges are approximate adult values — not calibrated for body size/age/sex.</div>
               <button onClick={() => { setResult(null); setFile(null); }} className="mt-4 w-full text-xs text-slate-400 hover:text-slate-200 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 border border-border">
                 Analyze another CT
               </button>

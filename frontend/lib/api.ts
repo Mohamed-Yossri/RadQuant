@@ -241,7 +241,13 @@ export const general = {
 
 // ── CT Reader (TotalSegmentator) ──────────────────────────────────────────────
 
-export interface CtVolume { name: string; ml: number; }
+export interface CtVolume {
+  name: string;
+  ml: number;
+  flag: 'low' | 'normal' | 'high' | null;
+  ref_low: number | null;
+  ref_high: number | null;
+}
 export interface CtSlice { orig: string; overlay: string; }
 export interface CtAnalyzeOut {
   study_id: string;

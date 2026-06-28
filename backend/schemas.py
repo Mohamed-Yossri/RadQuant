@@ -185,6 +185,9 @@ class GeneralSegmentOut(BaseModel):
 class CtVolume(BaseModel):
     name: str
     ml: float
+    flag: Optional[str] = None          # "low" | "normal" | "high" | None
+    ref_low: Optional[float] = None
+    ref_high: Optional[float] = None
 
 
 class CtSlice(BaseModel):
