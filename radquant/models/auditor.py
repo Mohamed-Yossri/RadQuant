@@ -74,6 +74,13 @@ class Auditor:
     def __init__(self, device: str = "cuda"):
         from transformers import AutoModelForImageTextToText, AutoProcessor
 
+        # Free any reclaimable VRAM before pulling in this second ~8 GB model —
+        # on a busy 24 GB card the first load is where OOM bites.
+        try:
+            torch.cuda.empty_cache()
+        except Exception:
+            pass
+
         self.processor = AutoProcessor.from_pretrained(AUDITOR_REPO)
         self.model = AutoModelForImageTextToText.from_pretrained(
             AUDITOR_REPO, dtype=torch.bfloat16, device_map=device,

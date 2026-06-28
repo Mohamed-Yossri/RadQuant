@@ -24,6 +24,36 @@ from backend.schemas import (
 router = APIRouter(prefix="/api/cases", tags=["cases"])
 
 
+async def _gpu_task(fn, *args, what: str):
+    """Run a GPU vision job in a thread; turn OOM into an actionable 503 and log faults.
+
+    Several stages (Grad-CAM, localization, segmentation) load their own model on
+    demand. On a busy 24 GB card the *first* such load can run the GPU out of
+    memory — which otherwise surfaces as a useless generic 500. Here we free the
+    cache and tell the user exactly what happened, and log the real traceback so
+    any genuine fault is diagnosable.
+    """
+    loop = asyncio.get_event_loop()
+    try:
+        return await loop.run_in_executor(None, fn, *args)
+    except Exception as e:  # noqa: BLE001
+        import traceback
+        traceback.print_exc()
+        msg = str(e)
+        oom_types = tuple(t for t in (getattr(__import__("torch").cuda, "OutOfMemoryError", None),) if t)
+        is_oom = isinstance(e, oom_types) or "out of memory" in msg.lower() or "CUDA error" in msg
+        if is_oom:
+            try:
+                import torch
+                torch.cuda.empty_cache()
+            except Exception:
+                pass
+            raise HTTPException(
+                503, f"{what} needs more GPU memory than is free right now — a large model "
+                "was loading. Wait a moment and click again (it's cached after the first load).")
+        raise HTTPException(500, f"{what} failed: {msg}")
+
+
 def _require_case(case_id: str, wl):
     case = wl.get(case_id)
     if not case:
@@ -86,9 +116,8 @@ async def stream_draft(case_id: str, wl=Depends(get_worklist)):
 @router.post("/{case_id}/gradcam", response_model=GradCAMOut)
 async def gradcam(case_id: str, wl=Depends(get_worklist)):
     case = _require_case(case_id, wl)
-    loop = asyncio.get_event_loop()
-    overlay_path, top = await loop.run_in_executor(
-        None, _run_gradcam, case.image_path, case.findings
+    overlay_path, top = await _gpu_task(
+        _run_gradcam, case.image_path, case.findings, what="Grad-CAM"
     )
     rel = Path(overlay_path).name
     return GradCAMOut(overlay_url=f"/api/images/temp/{rel}", top_finding=top)
@@ -104,9 +133,8 @@ def _run_gradcam(image_path: str, findings: dict):
 @router.post("/{case_id}/localize", response_model=LocalizeOut)
 async def localize(case_id: str, wl=Depends(get_worklist)):
     case = _require_case(case_id, wl)
-    loop = asyncio.get_event_loop()
-    findings, overlay_path = await loop.run_in_executor(
-        None, _run_localize, case.image_path
+    findings, overlay_path = await _gpu_task(
+        _run_localize, case.image_path, what="Localization"
     )
 
     from radquant.models.auditor import PRETTY
@@ -141,9 +169,7 @@ def _run_localize(image_path: str):
 @router.post("/{case_id}/segment", response_model=SegmentOut)
 async def segment(case_id: str, wl=Depends(get_worklist)):
     case = _require_case(case_id, wl)
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, _run_segment, case.image_path)
-    return result
+    return await _gpu_task(_run_segment, case.image_path, what="Segmentation")
 
 
 def _run_segment(image_path: str) -> SegmentOut:
