@@ -66,6 +66,19 @@ export default function CtPage() {
     }
   };
 
+  const runSample = async () => {
+    setFile(null); setResult(null); setError(null); setAnalyzing(true);
+    try {
+      const r = await ctApi.sample();
+      setResult(r);
+      setIdx(Math.floor(r.n_slices / 2));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   const step = useCallback((d: number) => {
     if (!result) return;
     setIdx((i) => Math.max(0, Math.min(result.n_slices - 1, i + d)));
@@ -103,19 +116,30 @@ export default function CtPage() {
         <span><strong className="text-slate-300">Cross-sectional (3D) pipeline.</strong> TotalSegmentator segments 100+ structures and measures their volumes; MedGemma drafts the read. Research demo, not diagnostic.</span>
       </div>
 
-      {!result && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => { e.preventDefault(); setDragging(false); if (e.dataTransfer.files[0]) analyze(e.dataTransfer.files[0]); }}
-          onClick={() => fileRef.current?.click()}
-          className={`mb-6 border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${dragging ? 'border-accent-sky bg-accent-sky/10 scale-[1.01]' : 'border-border hover:border-surface-4 bg-surface-1/40'}`}
-        >
-          <UploadCloud className="w-9 h-9 mx-auto mb-2 text-slate-500" />
-          <div className="text-sm text-slate-300 font-medium">{file ? `Selected: ${file.name}` : 'Drop a CT volume, or click to choose'}</div>
-          <div className="text-xs text-slate-500 mt-1">NIfTI (.nii.gz) — a 3D CT scan</div>
-          <input ref={fileRef} type="file" accept=".nii,.nii.gz,.gz" className="hidden" onChange={(e) => e.target.files?.[0] && analyze(e.target.files[0])} />
-        </div>
+      {!result && !analyzing && (
+        <>
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => { e.preventDefault(); setDragging(false); if (e.dataTransfer.files[0]) analyze(e.dataTransfer.files[0]); }}
+            onClick={() => fileRef.current?.click()}
+            className={`mb-3 border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${dragging ? 'border-accent-sky bg-accent-sky/10 scale-[1.01]' : 'border-border hover:border-surface-4 bg-surface-1/40'}`}
+          >
+            <UploadCloud className="w-9 h-9 mx-auto mb-2 text-slate-500" />
+            <div className="text-sm text-slate-300 font-medium">{file ? `Selected: ${file.name}` : 'Drop a CT scan, or click to choose'}</div>
+            <div className="text-xs text-slate-500 mt-1">NIfTI <span className="font-mono">.nii.gz</span> — or a DICOM series as a <span className="font-mono">.zip</span> of slices (e.g. an NLST lung-screening series)</div>
+            <input ref={fileRef} type="file" accept=".nii,.nii.gz,.gz,.zip" className="hidden" onChange={(e) => e.target.files?.[0] && analyze(e.target.files[0])} />
+          </div>
+          <div className="flex items-center justify-center gap-3 mb-6 text-xs text-slate-500">
+            <span>Don&apos;t have a scan handy?</span>
+            <button
+              onClick={runSample}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-teal/15 text-accent-teal border border-accent-teal/30 font-bold hover:bg-accent-teal/25 transition"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> Try a sample CT
+            </button>
+          </div>
+        </>
       )}
 
       {error && <div className="mb-6 p-4 rounded-xl bg-critical/10 border border-critical/30 text-critical text-sm">{error}</div>}

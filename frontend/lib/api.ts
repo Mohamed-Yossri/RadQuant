@@ -263,6 +263,7 @@ export const ct = {
     form.append('file', file);
     return api<CtAnalyzeOut>('/ct/analyze', { method: 'POST', body: form });
   },
+  sample: () => api<CtAnalyzeOut>('/ct/sample', { method: 'POST' }),
 };
 
 // ── Urgency helpers ───────────────────────────────────────────────────────────

@@ -35,19 +35,43 @@ async def ct_slice(study_id: str, fname: str):
 
 @router.post("/analyze", response_model=CtAnalyzeOut)
 async def analyze(file: UploadFile = File(...)):
-    """Upload a CT volume (NIfTI .nii.gz) → organ segmentation, volumes, report."""
+    """Upload a CT volume → organ segmentation, volumes, report.
+
+    Accepts a NIfTI file (``.nii``/``.nii.gz``) **or** a DICOM series as a
+    ``.zip`` of slices straight off a scanner/PACS (e.g.
+    ``ct-lung-screening-nlst-series.zip``).
+    """
     name = (file.filename or "ct.nii.gz").lower()
-    if not (name.endswith(".nii.gz") or name.endswith(".nii")):
-        raise HTTPException(400, "Upload a NIfTI CT volume (.nii.gz).")
+    if name.endswith(".nii.gz") or name.endswith(".nii"):
+        ext = ".nii.gz" if name.endswith(".nii.gz") else ".nii"
+    elif name.endswith(".zip"):
+        ext = ".zip"
+    else:
+        raise HTTPException(400, "Upload a NIfTI volume (.nii/.nii.gz) or a DICOM series (.zip).")
 
     study_id = f"ct-{uuid.uuid4().hex[:8]}"
-    dest = UPLOAD_DIR / f"{study_id}.nii.gz"
+    dest = UPLOAD_DIR / f"{study_id}{ext}"
     with open(dest, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
+    return await _run(str(dest), study_id)
+
+
+@router.post("/sample", response_model=CtAnalyzeOut)
+async def analyze_sample():
+    """Run the bundled sample CT so the Reader is one-click testable."""
+    from radquant.config import DATA_DIR  # noqa: F401  (kept for parity)
+
+    sample = Path("data") / "sample_ct" / "example_ct.nii.gz"
+    if not sample.is_file():
+        raise HTTPException(404, "Sample CT not found on the server.")
+    return await _run(str(sample), f"ct-sample-{uuid.uuid4().hex[:6]}")
+
+
+async def _run(path: str, study_id: str) -> CtAnalyzeOut:
     loop = asyncio.get_event_loop()
     try:
-        result = await loop.run_in_executor(None, _analyze, str(dest), study_id)
+        result = await loop.run_in_executor(None, _analyze, path, study_id)
         report = await loop.run_in_executor(
             None, _report, result["middle_overlay_path"], result["volumes"])
     except Exception as e:  # noqa: BLE001
