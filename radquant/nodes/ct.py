@@ -58,16 +58,87 @@ def _window(img: np.ndarray, level: float = 40, width: float = 400) -> np.ndarra
     return np.clip((img - lo) / (hi - lo), 0, 1)
 
 
-def dicom_to_nifti(src: str, out_path: Path) -> Path:
-    """Convert a DICOM series (a ``.zip`` of slices, or a folder) to one NIfTI.
+def _hu(ds, arr: np.ndarray) -> np.ndarray:
+    """Apply RescaleSlope/Intercept → Hounsfield Units."""
+    slope = float(getattr(ds, "RescaleSlope", 1) or 1)
+    inter = float(getattr(ds, "RescaleIntercept", 0) or 0)
+    return arr.astype(np.float32) * slope + inter
 
-    We build the volume ourselves (pydicom) rather than handing the zip to
-    TotalSegmentator, so the segmentation mask and our rendered slices share the
-    exact same voxel grid. Handles the three things a naive loader gets wrong:
-    (1) **Hounsfield calibration** via RescaleSlope/Intercept, (2) **slice
+
+def _multiframe_to_nifti(ds, out_path: Path) -> Path:
+    """Enhanced (multi-frame) DICOM — the whole volume lives in one .dcm file.
+
+    pixel_array is (frames, rows, cols). Per-frame geometry lives in the
+    PerFrameFunctionalGroupsSequence; fall back to shared groups / top-level tags.
+    """
+    import nibabel as nib
+
+    frames = ds.pixel_array  # (F, R, C)
+    if frames.ndim != 3:
+        raise ValueError("Multi-frame DICOM did not decode to a 3D array.")
+    F = frames.shape[0]
+
+    def _shared(seq_name, tag, default=None):
+        sh = getattr(ds, "SharedFunctionalGroupsSequence", None)
+        if sh:
+            grp = getattr(sh[0], seq_name, None)
+            if grp:
+                return getattr(grp[0], tag, default)
+        return default
+
+    pix = _shared("PixelMeasuresSequence", "PixelSpacing", getattr(ds, "PixelSpacing", [1.0, 1.0]))
+    drow, dcol = float(pix[0]), float(pix[1])
+    iop = list(_shared("PlaneOrientationSequence", "ImageOrientationPatient",
+                       getattr(ds, "ImageOrientationPatient", [1, 0, 0, 0, 1, 0])))
+    iop = np.array(iop, float)
+    col_dir, row_dir = iop[0:3], iop[3:6]
+    normal = np.cross(col_dir, row_dir)
+
+    # per-frame positions (sorted along the normal)
+    pfg = getattr(ds, "PerFrameFunctionalGroupsSequence", None)
+    positions = []
+    for i in range(F):
+        ipp = None
+        if pfg and i < len(pfg):
+            pp = getattr(pfg[i], "PlanePositionSequence", None)
+            if pp:
+                ipp = getattr(pp[0], "ImagePositionPatient", None)
+        positions.append(np.array(ipp, float) if ipp is not None else np.array([0, 0, float(i)]))
+    order = sorted(range(F), key=lambda i: float(np.dot(positions[i], normal)))
+    frames = frames[order]
+    positions = [positions[i] for i in order]
+
+    if F > 1:
+        span = np.dot(positions[-1] - positions[0], normal)
+        slice_sp = abs(span) / (F - 1) or float(_shared("PixelMeasuresSequence", "SliceThickness",
+                                                        getattr(ds, "SliceThickness", 1)) or 1)
+    else:
+        slice_sp = float(getattr(ds, "SliceThickness", 1) or 1)
+
+    vol = np.moveaxis(_hu(ds, frames), 0, -1)  # (R, C, F)
+    affine = np.eye(4)
+    affine[:3, 0] = row_dir * drow
+    affine[:3, 1] = col_dir * dcol
+    affine[:3, 2] = normal * slice_sp
+    affine[:3, 3] = positions[0]
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    nib.save(nib.Nifti1Image(vol.astype(np.int16), affine), str(out_path))
+    return out_path
+
+
+def dicom_to_nifti(src: str, out_path: Path) -> Path:
+    """Convert a DICOM CT to one NIfTI volume.
+
+    Accepts a ``.zip`` of slices, a folder of slices, or a single multi-frame
+    (enhanced) ``.dcm``. We build the volume ourselves (pydicom) rather than
+    handing the input to TotalSegmentator, so the segmentation mask and our
+    rendered slices share the exact same voxel grid. Handles what a naive loader
+    gets wrong: **Hounsfield calibration** (RescaleSlope/Intercept), **slice
     ordering** by projecting ImagePositionPatient onto the slice normal (not
-    filename), and (3) a **geometrically correct affine** so organ volumes in ml
-    are right. If a zip holds several series, the one with the most slices wins.
+    filename), a **geometrically correct affine** so organ volumes in ml are
+    right, **mixed series / localizers** (keeps the largest consistent series),
+    and **per-slice read failures** (skipped, not fatal). If a zip holds several
+    series, the largest wins.
     """
     import pydicom
     import nibabel as nib
@@ -79,47 +150,71 @@ def dicom_to_nifti(src: str, out_path: Path) -> Path:
         with zipfile.ZipFile(src_p) as zf:
             zf.extractall(root)
 
-    # collect readable image slices, grouped by series
-    groups: Dict[str, list] = defaultdict(list)
+    # A single file: could be a multi-frame (enhanced) CT = a whole volume.
+    if root.is_file():
+        ds = pydicom.dcmread(str(root), force=True)
+        nframes = int(getattr(ds, "NumberOfFrames", 1) or 1)
+        if nframes > 1:
+            return _multiframe_to_nifti(ds, out_path)
+        raise ValueError(
+            "That's a single DICOM slice (.dcm) — one slice is not a 3-D CT volume. "
+            "Upload the whole series as a .zip of its .dcm files (or a multi-frame .dcm).")
+
+    # A folder / extracted zip: collect image slices, grouped by series.
+    candidates = []
     for p in root.rglob("*"):
-        if not p.is_file():
+        if not p.is_file() or p.name.upper() == "DICOMDIR":
             continue
         try:
-            ds = pydicom.dcmread(str(p), force=True)
+            # fast header scan (no pixel decode); PixelData is intentionally not
+            # loaded here, so we gate on geometry tags an image slice must have.
+            ds = pydicom.dcmread(str(p), force=True, stop_before_pixels=True)
         except Exception:
             continue
-        if "PixelData" not in ds or getattr(ds, "ImagePositionPatient", None) is None:
+        if int(getattr(ds, "Rows", 0)) < 1 or getattr(ds, "ImagePositionPatient", None) is None:
             continue
-        groups[str(getattr(ds, "SeriesInstanceUID", "x"))].append(ds)
+        candidates.append((p, ds))
 
-    if not groups:
-        raise ValueError("No DICOM image slices found in the upload.")
+    if not candidates:
+        raise ValueError(
+            "No DICOM image slices with position info found in the upload. "
+            "Make sure the .zip contains the CT series' .dcm files.")
+
+    # group by (series UID, image shape) so localizers/scouts don't pollute the stack
+    groups: Dict[tuple, list] = defaultdict(list)
+    for p, ds in candidates:
+        key = (str(getattr(ds, "SeriesInstanceUID", "x")),
+               int(getattr(ds, "Rows", 0)), int(getattr(ds, "Columns", 0)))
+        groups[key].append((p, ds))
     series = max(groups.values(), key=len)
     if len(series) < 3:
         raise ValueError(
-            f"DICOM series has only {len(series)} slice(s); a CT volume needs many "
-            "(upload the whole series as a folder or .zip, not a single slice).")
+            f"Largest consistent DICOM series has only {len(series)} slice(s); a CT "
+            "volume needs many. Upload the full axial series as a .zip.")
 
-    ds0 = series[0]
-    iop = np.array(ds0.ImageOrientationPatient, dtype=float)
-    col_dir, row_dir = iop[0:3], iop[3:6]           # X (cols), Y (rows)
+    iop = np.array(series[0][1].ImageOrientationPatient, dtype=float)
+    col_dir, row_dir = iop[0:3], iop[3:6]            # X (cols), Y (rows)
     normal = np.cross(col_dir, row_dir)
-    series.sort(key=lambda d: float(np.dot(np.array(d.ImagePositionPatient, float), normal)))
-    ds0 = series[0]
+    series.sort(key=lambda pd: float(np.dot(np.array(pd[1].ImagePositionPatient, float), normal)))
 
-    def hu(d):
-        a = d.pixel_array.astype(np.float32)
-        return a * float(getattr(d, "RescaleSlope", 1) or 1) + float(getattr(d, "RescaleIntercept", 0) or 0)
+    # read pixels now (full read), skipping any individually unreadable slice
+    slabs, kept = [], []
+    for p, _ in series:
+        try:
+            ds = pydicom.dcmread(str(p), force=True)
+            slabs.append(_hu(ds, ds.pixel_array))
+            kept.append(ds)
+        except Exception:
+            continue
+    if len(kept) < 3:
+        raise ValueError("Too many DICOM slices failed to decode (need a CT/JPEG plugin?).")
 
-    vol = np.stack([hu(d) for d in series], axis=-1)   # [rows, cols, slices]
-
-    drow, dcol = (float(x) for x in ds0.PixelSpacing)  # [between-rows, between-cols]
+    vol = np.stack(slabs, axis=-1)                    # [rows, cols, slices]
+    ds0 = kept[0]
+    drow, dcol = (float(x) for x in ds0.PixelSpacing)
     ipp0 = np.array(ds0.ImagePositionPatient, float)
-    if len(series) > 1:
-        span = np.dot(np.array(series[-1].ImagePositionPatient, float) - ipp0, normal)
-        slice_sp = abs(span) / (len(series) - 1) or float(getattr(ds0, "SliceThickness", 1) or 1)
-    else:
-        slice_sp = float(getattr(ds0, "SliceThickness", 1) or 1)
+    span = np.dot(np.array(kept[-1].ImagePositionPatient, float) - ipp0, normal)
+    slice_sp = abs(span) / (len(kept) - 1) or float(getattr(ds0, "SliceThickness", 1) or 1)
 
     affine = np.eye(4)
     affine[:3, 0] = row_dir * drow
@@ -158,9 +253,9 @@ def analyze_ct(input_path: str, study_id: Optional[str] = None,
     study_id = study_id or f"ct-{uuid.uuid4().hex[:8]}"
     work = CT_DIR / study_id
 
-    # DICOM series (zip or folder) → NIfTI first; .nii/.nii.gz pass through.
+    # DICOM (zip / folder / single multi-frame .dcm) → NIfTI first; .nii passes through.
     ip = Path(input_path)
-    if ip.suffix.lower() == ".zip" or ip.is_dir():
+    if ip.suffix.lower() in (".zip", ".dcm") or ip.is_dir():
         input_path = str(dicom_to_nifti(input_path, work / "volume.nii.gz"))
 
     seg_file = run_totalseg(input_path, work, fast=fast)

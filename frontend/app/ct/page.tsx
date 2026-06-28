@@ -127,8 +127,8 @@ export default function CtPage() {
           >
             <UploadCloud className="w-9 h-9 mx-auto mb-2 text-slate-500" />
             <div className="text-sm text-slate-300 font-medium">{file ? `Selected: ${file.name}` : 'Drop a CT scan, or click to choose'}</div>
-            <div className="text-xs text-slate-500 mt-1">NIfTI <span className="font-mono">.nii.gz</span> — or a DICOM series as a <span className="font-mono">.zip</span> of slices (e.g. an NLST lung-screening series)</div>
-            <input ref={fileRef} type="file" accept=".nii,.nii.gz,.gz,.zip" className="hidden" onChange={(e) => e.target.files?.[0] && analyze(e.target.files[0])} />
+            <div className="text-xs text-slate-500 mt-1">NIfTI <span className="font-mono">.nii.gz</span> — or a DICOM series as a <span className="font-mono">.zip</span> of <span className="font-mono">.dcm</span> slices (e.g. an NLST lung-screening series). A single <span className="font-mono">.dcm</span> is just one slice — zip the whole series.</div>
+            <input ref={fileRef} type="file" accept=".nii,.nii.gz,.gz,.zip,.dcm" className="hidden" onChange={(e) => e.target.files?.[0] && analyze(e.target.files[0])} />
           </div>
           <div className="flex items-center justify-center gap-3 mb-6 text-xs text-slate-500">
             <span>Don&apos;t have a scan handy?</span>

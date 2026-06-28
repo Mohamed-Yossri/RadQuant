@@ -37,17 +37,23 @@ async def ct_slice(study_id: str, fname: str):
 async def analyze(file: UploadFile = File(...)):
     """Upload a CT volume → organ segmentation, volumes, report.
 
-    Accepts a NIfTI file (``.nii``/``.nii.gz``) **or** a DICOM series as a
-    ``.zip`` of slices straight off a scanner/PACS (e.g.
-    ``ct-lung-screening-nlst-series.zip``).
+    Accepts a NIfTI file (``.nii``/``.nii.gz``), a DICOM series as a ``.zip`` of
+    slices straight off a scanner/PACS (e.g. ``ct-lung-screening-nlst-series.zip``),
+    or a single multi-frame (enhanced) ``.dcm``. A single *single-frame* ``.dcm``
+    is just one slice — not a volume — and is rejected with guidance to zip the
+    whole series.
     """
     name = (file.filename or "ct.nii.gz").lower()
     if name.endswith(".nii.gz") or name.endswith(".nii"):
         ext = ".nii.gz" if name.endswith(".nii.gz") else ".nii"
     elif name.endswith(".zip"):
         ext = ".zip"
+    elif name.endswith(".dcm"):
+        ext = ".dcm"
     else:
-        raise HTTPException(400, "Upload a NIfTI volume (.nii/.nii.gz) or a DICOM series (.zip).")
+        raise HTTPException(
+            400, "Upload a NIfTI volume (.nii/.nii.gz), a DICOM series (.zip of .dcm "
+            "slices), or a multi-frame .dcm.")
 
     study_id = f"ct-{uuid.uuid4().hex[:8]}"
     dest = UPLOAD_DIR / f"{study_id}{ext}"
@@ -74,7 +80,11 @@ async def _run(path: str, study_id: str) -> CtAnalyzeOut:
         result = await loop.run_in_executor(None, _analyze, path, study_id)
         report = await loop.run_in_executor(
             None, _report, result["middle_overlay_path"], result["volumes"])
-    except Exception as e:  # noqa: BLE001
+    except ValueError as e:                       # bad/unsuitable input → actionable 400
+        raise HTTPException(400, str(e))
+    except Exception as e:  # noqa: BLE001        # genuine server-side failure
+        import traceback
+        traceback.print_exc()
         raise HTTPException(500, f"CT analysis failed: {e}")
 
     return CtAnalyzeOut(
